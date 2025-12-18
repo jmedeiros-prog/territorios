@@ -23,10 +23,10 @@
 
     .botoes {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 16px;
       padding: 25px;
-      max-width: 700px;
+      max-width: 800px;
       margin: auto;
     }
 
@@ -45,6 +45,10 @@
     button:hover {
       background: #4a6fa5;
       color: #fff;
+    }
+
+    .domingo {
+      background: #eef3fb;
     }
 
     .feriado {
@@ -71,15 +75,38 @@
 <header>Territórios da Semana</header>
 
 <div class="botoes">
-  <!-- TODOS OS DIAS APONTAM PARA cartoes.html -->
-  <button onclick="window.location.href='cartoes.html'">Segunda</button>
-  <button onclick="window.location.href='cartoes.html'">Terça</button>
-  <button onclick="window.location.href='cartoes.html'">Quarta</button>
-  <button onclick="window.location.href='cartoes.html'">Quinta</button>
-  <button onclick="window.location.href='cartoes.html'">Sexta</button>
-  <button onclick="window.location.href='cartoes.html'">Domingo</button>
-  <button onclick="window.location.href='cartoes.html'">Campo Rural</button>
-  <button class="feriado" onclick="window.location.href='cartoes.html'">Feriado</button>
+  <!-- SEMANA -->
+  <button onclick="window.location.href='cartoes.html#t01'">Segunda</button>
+  <button onclick="window.location.href='cartoes.html#t02'">Terça</button>
+  <button onclick="window.location.href='cartoes.html#t03'">Quarta</button>
+  <button onclick="window.location.href='cartoes.html#t04'">Quinta</button>
+  <button onclick="window.location.href='cartoes.html#t05'">Sexta</button>
+
+  <!-- DOMINGO - GRUPOS -->
+  <button class="domingo" onclick="window.location.href='cartoes.html#bv1'">
+    Domingo – Bela Vista 1
+  </button>
+
+  <button class="domingo" onclick="window.location.href='cartoes.html#bv2'">
+    Domingo – Bela Vista 2
+  </button>
+
+  <button class="domingo" onclick="window.location.href='cartoes.html#cax'">
+    Domingo – Caxambu
+  </button>
+
+  <button class="domingo" onclick="window.location.href='cartoes.html#mei'">
+    Domingo – Meireles
+  </button>
+
+  <!-- OUTROS -->
+  <button onclick="window.location.href='cartoes.html#rural'">
+    Campo Rural
+  </button>
+
+  <button class="feriado" onclick="window.location.href='cartoes.html#feriado'">
+    Feriado
+  </button>
 </div>
 
 <footer>
