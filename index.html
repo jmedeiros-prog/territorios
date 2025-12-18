@@ -1,78 +1,155 @@
-<script>
-function mostrarDia(dia) {
-  const c = document.getElementById("conteudo");
-  c.innerHTML = "";
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Territórios da Semana</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  // DOMINGO
-  if (dia === 0) {
-    c.innerHTML = `
-      <div class="card">
-        <h2>Selecione seu grupo</h2>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f4f6f9;
+      color: #333;
+    }
 
-        <div class="grupo">
-          <button onclick="mostrarGrupo('Bela Vista 1 – Edson Reis')">
-            Bela Vista 1 – Edson Reis
-          </button>
+    header {
+      background-color: #4a6fa5;
+      color: #fff;
+      padding: 18px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
 
-          <button onclick="mostrarGrupo('Bela Vista 2 – George Moura')">
-            Bela Vista 2 – George Moura
-          </button>
+    .dias {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 10px;
+    }
 
-          <button onclick="mostrarGrupo('Caxambu – Willian Guimarães')">
-            Caxambu – Willian Guimarães
-          </button>
+    .dias button {
+      background-color: #fff;
+      border: 1px solid #4a6fa5;
+      color: #4a6fa5;
+      padding: 8px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+    }
 
-          <button onclick="mostrarGrupo('Meireles – Edson Ornagui')">
-            Meireles – Edson Ornagui
-          </button>
-        </div>
-      </div>
-    `;
-  } 
-  // SEGUNDA A SÁBADO
-  else {
-    c.innerHTML = `
-      <div class="card">
-        <h2>Escolha uma opção</h2>
+    .dias button:hover {
+      background-color: #4a6fa5;
+      color: #fff;
+    }
 
-        <div class="acoes">
-          <button onclick="mostrarRural()">Território Rural</button>
-          <button class="feriado" onclick="mostrarRural()">Feriado</button>
-        </div>
-      </div>
-    `;
-  }
-}
+    .card {
+      background: #fff;
+      max-width: 420px;
+      margin: 30px auto;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      text-align: center;
+    }
 
-// MOSTRA TERRITÓRIO RURAL
-function mostrarRural() {
-  const c = document.getElementById("conteudo");
-  c.innerHTML = `
-    <div class="card">
-      <h2>Território Rural</h2>
-      <div class="placeholder">
-        Cartão do território rural
-      </div>
+    .card h2 {
+      margin-top: 0;
+      color: #4a6fa5;
+    }
+
+    .extra-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 15px;
+    }
+
+    .btn-rural {
+      background-color: #4a6fa5;
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-feriado {
+      background-color: #d4a017;
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-rural:hover,
+    .btn-feriado:hover {
+      opacity: 0.9;
+    }
+
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    Territórios da Semana
+  </header>
+
+  <!-- Botões dos dias -->
+  <div class="dias">
+    <button onclick="selecionarDia('segunda')">Segunda</button>
+    <button onclick="selecionarDia('terca')">Terça</button>
+    <button onclick="selecionarDia('quarta')">Quarta</button>
+    <button onclick="selecionarDia('quinta')">Quinta</button>
+    <button onclick="selecionarDia('sexta')">Sexta</button>
+    <button onclick="selecionarDia('sabado')">Sábado</button>
+    <button onclick="selecionarDia('domingo')">Domingo</button>
+  </div>
+
+  <!-- Card central -->
+  <div class="card">
+    <h2>Escolha uma opção</h2>
+
+    <div class="extra-buttons">
+      <button class="btn-rural" onclick="selecionarOpcao('rural')">
+        Campo Rural
+      </button>
+
+      <button class="btn-feriado" onclick="selecionarOpcao('feriado')">
+        Feriado
+      </button>
     </div>
-  `;
-}
+  </div>
 
-// MOSTRA TERRITÓRIO DO GRUPO (DOMINGO)
-function mostrarGrupo(nome) {
-  const c = document.getElementById("conteudo");
-  c.innerHTML = `
-    <div class="card">
-      <h2>${nome}</h2>
-      <div class="placeholder">
-        Cartão do território
-      </div>
-    </div>
-  `;
-}
+  <footer>
+    Organização de Territórios - Congregação Bela Vista
+  </footer>
 
-// CARREGA AUTOMATICAMENTE O DIA ATUAL
-window.onload = function () {
-  const hoje = new Date().getDay(); // 0 = domingo
-  mostrarDia(hoje);
-};
-</script>
+  <script>
+    function selecionarDia(dia) {
+      alert("Dia selecionado: " + dia);
+      // depois você pode trocar esse alert por:
+      // window.location.href = dia + ".html";
+    }
+
+    function selecionarOpcao(opcao) {
+      alert("Opção selecionada: " + opcao);
+      // depois você pode apontar para:
+      // rural.html ou feriado.html
+    }
+  </script>
+
+</body>
+</html>
