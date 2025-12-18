@@ -5,39 +5,46 @@
   <title>Territórios da Semana</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- força não usar cache antigo -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <style>
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
-      background: #f4f6f9;
+      background: #f2f4f8;
     }
 
     header {
       background: #4a6fa5;
       color: #fff;
-      padding: 18px;
+      padding: 22px;
       text-align: center;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: bold;
     }
 
-    .botoes, .grupos {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-      margin: 30px 10px;
+    .botoes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      padding: 25px;
+      max-width: 700px;
+      margin: auto;
     }
 
     button {
-      background: #fff;
-      border: 1px solid #4a6fa5;
+      background: #ffffff;
+      border: 2px solid #4a6fa5;
       color: #4a6fa5;
-      padding: 10px 22px;
-      border-radius: 22px;
-      font-size: 14px;
+      padding: 22px 10px;
+      border-radius: 18px;
+      font-size: 18px;
+      font-weight: bold;
       cursor: pointer;
-      white-space: nowrap;
+      min-height: 70px;
     }
 
     button:hover {
@@ -48,7 +55,6 @@
     .feriado {
       border-color: #d4a017;
       color: #d4a017;
-      font-weight: bold;
     }
 
     .feriado:hover {
@@ -58,18 +64,9 @@
 
     footer {
       text-align: center;
-      font-size: 12px;
+      font-size: 13px;
       color: #777;
-      margin-top: 40px;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    h2 {
-      text-align: center;
-      color: #4a6fa5;
+      margin: 30px 10px;
     }
   </style>
 </head>
@@ -78,28 +75,15 @@
 
 <header>Territórios da Semana</header>
 
-<div id="menu" class="botoes">
-  <button onclick="abrirDia('segunda')">Segunda</button>
-  <button onclick="abrirDia('terca')">Terça</button>
-  <button onclick="abrirDia('quarta')">Quarta</button>
-  <button onclick="abrirDia('quinta')">Quinta</button>
-  <button onclick="abrirDia('sexta')">Sexta</button>
-  <button onclick="mostrarGrupos()">Domingo</button>
-  <button onclick="abrirDia('rural')">Campo Rural</button>
-  <button class="feriado" onclick="abrirDia('feriado')">Feriado</button>
-</div>
-
-<div id="grupos" class="hidden">
-  <h2>Selecione seu grupo</h2>
-  <div class="grupos">
-    <button onclick="abrirGrupo('grupo1')">Grupo 1</button>
-    <button onclick="abrirGrupo('grupo2')">Grupo 2</button>
-    <button onclick="abrirGrupo('grupo3')">Grupo 3</button>
-  </div>
-
-  <div class="botoes">
-    <button onclick="voltar()">⬅ Voltar</button>
-  </div>
+<div class="botoes">
+  <button onclick="abrir('segunda')">Segunda</button>
+  <button onclick="abrir('terca')">Terça</button>
+  <button onclick="abrir('quarta')">Quarta</button>
+  <button onclick="abrir('quinta')">Quinta</button>
+  <button onclick="abrir('sexta')">Sexta</button>
+  <button onclick="abrirDomingo()">Domingo</button>
+  <button onclick="abrir('rural')">Campo Rural</button>
+  <button class="feriado" onclick="abrir('feriado')">Feriado</button>
 </div>
 
 <footer>
@@ -107,22 +91,12 @@
 </footer>
 
 <script>
-  function abrirDia(pagina) {
+  function abrir(pagina) {
     window.location.href = pagina + ".html";
   }
 
-  function mostrarGrupos() {
-    document.getElementById("menu").classList.add("hidden");
-    document.getElementById("grupos").classList.remove("hidden");
-  }
-
-  function voltar() {
-    document.getElementById("grupos").classList.add("hidden");
-    document.getElementById("menu").classList.remove("hidden");
-  }
-
-  function abrirGrupo(grupo) {
-    window.location.href = "domingo-" + grupo + ".html";
+  function abrirDomingo() {
+    window.location.href = "domingo.html";
   }
 </script>
 
