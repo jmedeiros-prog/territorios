@@ -75,13 +75,42 @@
       margin-top: 0;
     }
 
-    .grupo {
-      margin-top: 20px;
+    .acoes button {
+      background: var(--jw-blue);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      margin: 10px;
+      border-radius: 30px;
+      font-size: 1em;
+      cursor: pointer;
     }
 
-    .grupo h3 {
-      margin-bottom: 8px;
+    .acoes button.feriado {
+      background: #c9a227;
+    }
+
+    .acoes button:hover {
+      opacity: 0.9;
+    }
+
+    .grupo button {
+      display: block;
+      width: 100%;
+      max-width: 400px;
+      margin: 10px auto;
+      padding: 12px;
+      border-radius: 25px;
+      border: 1px solid var(--jw-blue);
+      background: white;
       color: var(--jw-blue);
+      font-size: 0.95em;
+      cursor: pointer;
+    }
+
+    .grupo button:hover {
+      background: var(--jw-blue);
+      color: white;
     }
 
     .placeholder {
@@ -126,39 +155,47 @@ function mostrarDia(dia) {
   if (dia === 0) {
     c.innerHTML = `
       <div class="card">
-        <h2>Territórios de Domingo</h2>
+        <h2>Selecione seu grupo</h2>
 
         <div class="grupo">
-          <h3>Bela Vista 1 – Edson Reis</h3>
-          <div class="placeholder">Cartão do território</div>
-        </div>
-
-        <div class="grupo">
-          <h3>Bela Vista 2 – George Moura</h3>
-          <div class="placeholder">Cartão do território</div>
-        </div>
-
-        <div class="grupo">
-          <h3>Caxambu – Willian Guimarães</h3>
-          <div class="placeholder">Cartão do território</div>
-        </div>
-
-        <div class="grupo">
-          <h3>Meireles – Edson Ornagui</h3>
-          <div class="placeholder">Cartão do território</div>
+          <button onclick="mostrarGrupo('Bela Vista 1 – Edson Reis')">Bela Vista 1 – Edson Reis</button>
+          <button onclick="mostrarGrupo('Bela Vista 2 – George Moura')">Bela Vista 2 – George Moura</button>
+          <button onclick="mostrarGrupo('Caxambu – Willian Guimarães')">Caxambu – Willian Guimarães</button>
+          <button onclick="mostrarGrupo('Meireles – Edson Ornagui')">Meireles – Edson Ornagui</button>
         </div>
       </div>
     `;
   } else {
     c.innerHTML = `
       <div class="card">
-        <h2>Território Rural</h2>
-        <div class="placeholder">
-          Cartão do território rural
+        <h2>Escolha uma opção</h2>
+        <div class="acoes">
+          <button onclick="mostrarRural()">Território Rural</button>
+          <button class="feriado" onclick="mostrarRural()">Feriado</button>
         </div>
       </div>
     `;
   }
+}
+
+function mostrarRural() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = `
+    <div class="card">
+      <h2>Território Rural</h2>
+      <div class="placeholder">Cartão do território rural</div>
+    </div>
+  `;
+}
+
+function mostrarGrupo(nome) {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = `
+    <div class="card">
+      <h2>${nome}</h2>
+      <div class="placeholder">Cartão do território</div>
+    </div>
+  `;
 }
 
 window.onload = () => mostrarDia(new Date().getDay());
