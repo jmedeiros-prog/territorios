@@ -10,7 +10,6 @@ body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
   background: #f4f6f9;
-  text-align: center;
 }
 
 header {
@@ -19,16 +18,18 @@ header {
   padding: 20px;
   font-size: 22px;
   font-weight: bold;
+  text-align: center;
 }
 
 section {
   max-width: 700px;
-  margin: 30px auto;
+  margin: 35px auto;
   padding: 0 20px;
 }
 
 h2 {
-  margin-top: 40px;
+  text-align: center;
+  margin: 25px 0 15px;
   color: #333;
 }
 
@@ -43,11 +44,25 @@ a.cartao {
   font-size: 18px;
   font-weight: bold;
   border: 2px solid #4a6fa5;
+  text-align: center;
 }
 
 a.cartao:hover {
   background: #4a6fa5;
   color: #fff;
+}
+
+.voltar {
+  display: block;
+  width: fit-content;
+  margin: 40px auto;
+  padding: 14px 30px;
+  font-size: 18px;
+  border-radius: 20px;
+  background: #4a6fa5;
+  color: #fff;
+  text-decoration: none;
+  text-align: center;
 }
 </style>
 </head>
@@ -56,44 +71,96 @@ a.cartao:hover {
 
 <header>Cartões de Território</header>
 
-<section>
-
-  <!-- SEGUNDA -->
-  <h2 id="t01">Segunda</h2>
-
-  <a class="cartao"
-     href="https://drive.google.com/file/d/1tbMomYkkg03TB7SXHnLUqTPf03Rn-F-0/view?usp=drive_link"
-     target="_blank">
-    Território C6
-  </a>
-
-  <!-- TERÇA -->
-  <h2 id="t02">Terça</h2>
-
-  <a class="cartao"
-     href=https://drive.google.com/file/d/1UbC9us2N39CkFhWZT3I0_L1zeufBDS32/view?usp=drive_link">
-    Território C8
-  </a>
-
-  <!-- DOMINGO – BELA VISTA 1 -->
-  <h2 id="bv1">Domingo – Bela Vista 1</h2>
-
-  <a class="cartao"
-     href="LINK_DO_DRIVE_BV1"
-     target="_blank">
-    Território BV1 – 01
-  </a>
-
-  <!-- DOMINGO – CAXAMBU -->
-  <h2 id="cax">Domingo – Caxambu</h2>
-
-  <a class="cartao"
-     href="LINK_DO_DRIVE_CAX"
-     target="_blank">
-    Território Caxambu – 01
-  </a>
-
+<!-- ================= SEGUNDA ================= -->
+<section id="t01">
+  <h2>Segunda</h2>
+  <a class="cartao" href="LINK_SEGUNDA" target="_blank">Território Segunda</a>
 </section>
+
+<!-- ================= TERÇA ================= -->
+<section id="t02">
+  <h2>Terça</h2>
+  <a class="cartao" href="LINK_TERCA" target="_blank">Território Terça</a>
+</section>
+
+<!-- ================= QUARTA ================= -->
+<section id="t03">
+  <h2>Quarta</h2>
+  <a class="cartao" href="LINK_QUARTA" target="_blank">Território Quarta</a>
+</section>
+
+<!-- ================= QUINTA ================= -->
+<section id="t04">
+  <h2>Quinta</h2>
+  <a class="cartao" href="LINK_QUINTA" target="_blank">Território Quinta</a>
+</section>
+
+<!-- ================= SEXTA ================= -->
+<section id="t05">
+  <h2>Sexta</h2>
+  <a class="cartao" href="LINK_SEXTA" target="_blank">Território Sexta</a>
+</section>
+
+<!-- ================= SÁBADO ================= -->
+<section id="t06">
+  <h2>Sábado</h2>
+  <a class="cartao" href="LINK_SABADO" target="_blank">Território Sábado</a>
+</section>
+
+<!-- ================= DOMINGO – BELA VISTA 1 ================= -->
+<section id="bv1">
+  <h2>Domingo – Bela Vista 1</h2>
+  <a class="cartao" href="LINK_BV1" target="_blank">Território BV1</a>
+</section>
+
+<!-- ================= DOMINGO – BELA VISTA 2 ================= -->
+<section id="bv2">
+  <h2>Domingo – Bela Vista 2</h2>
+  <a class="cartao" href="LINK_BV2" target="_blank">Território BV2</a>
+</section>
+
+<!-- ================= DOMINGO – CAXAMBU ================= -->
+<section id="cax">
+  <h2>Domingo – Caxambu</h2>
+  <a class="cartao" href="LINK_CAXAMBU" target="_blank">Território Caxambu</a>
+</section>
+
+<!-- ================= DOMINGO – MEIRELES ================= -->
+<section id="mei">
+  <h2>Domingo – Meireles</h2>
+  <a class="cartao" href="LINK_MEIRELES" target="_blank">Território Meireles</a>
+</section>
+
+<!-- ================= CAMPO RURAL ================= -->
+<section id="rural">
+  <h2>Campo Rural</h2>
+  <a class="cartao" href="LINK_RURAL" target="_blank">Território Rural</a>
+</section>
+
+<!-- ================= FERIADO ================= -->
+<section id="feriado">
+  <h2>Feriado</h2>
+  <a class="cartao" href="LINK_FERIADO" target="_blank">Território Feriado</a>
+</section>
+
+<a class="voltar" href="index.html">⬅ Voltar</a>
+
+<script>
+(function () {
+  const hash = window.location.hash;
+
+  if (hash) {
+    document.querySelectorAll("section").forEach(sec => {
+      sec.style.display = "none";
+    });
+
+    const alvo = document.querySelector(hash);
+    if (alvo) {
+      alvo.style.display = "block";
+    }
+  }
+})();
+</script>
 
 </body>
 </html>
