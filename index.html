@@ -61,6 +61,19 @@
       color: #fff;
     }
 
+    /* Submenu Domingo */
+    #domingo-submenu {
+      grid-column: 1 / -1;
+      display: none;
+    }
+
+    .domingo-grupos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-top: 10px;
+    }
+
     footer {
       text-align: center;
       font-size: 13px;
@@ -75,6 +88,7 @@
 <header>Territórios da Semana</header>
 
 <div class="botoes">
+
   <!-- SEMANA -->
   <button onclick="window.location.href='cartoes.html#t01'">Segunda</button>
   <button onclick="window.location.href='cartoes.html#t02'">Terça</button>
@@ -82,22 +96,28 @@
   <button onclick="window.location.href='cartoes.html#t04'">Quinta</button>
   <button onclick="window.location.href='cartoes.html#t05'">Sexta</button>
 
-  <!-- DOMINGO - GRUPOS -->
-  <button class="domingo" onclick="window.location.href='cartoes.html#bv1'">
-    Domingo – Bela Vista 1
-  </button>
+  <!-- DOMINGO -->
+  <button class="domingo" onclick="toggleDomingo()">Domingo ▾</button>
 
-  <button class="domingo" onclick="window.location.href='cartoes.html#bv2'">
-    Domingo – Bela Vista 2
-  </button>
+  <div id="domingo-submenu">
+    <div class="domingo-grupos">
+      <button onclick="window.location.href='cartoes.html#bv1'">
+        Bela Vista 1
+      </button>
 
-  <button class="domingo" onclick="window.location.href='cartoes.html#cax'">
-    Domingo – Caxambu
-  </button>
+      <button onclick="window.location.href='cartoes.html#bv2'">
+        Bela Vista 2
+      </button>
 
-  <button class="domingo" onclick="window.location.href='cartoes.html#mei'">
-    Domingo – Meireles
-  </button>
+      <button onclick="window.location.href='cartoes.html#cax'">
+        Caxambu
+      </button>
+
+      <button onclick="window.location.href='cartoes.html#mei'">
+        Meireles
+      </button>
+    </div>
+  </div>
 
   <!-- OUTROS -->
   <button onclick="window.location.href='cartoes.html#rural'">
@@ -107,11 +127,22 @@
   <button class="feriado" onclick="window.location.href='cartoes.html#feriado'">
     Feriado
   </button>
+
 </div>
 
 <footer>
   Organização de Territórios – Congregação Bela Vista
 </footer>
+
+<script>
+function toggleDomingo() {
+  const submenu = document.getElementById('domingo-submenu');
+  submenu.style.display =
+    submenu.style.display === 'none' || submenu.style.display === ''
+      ? 'block'
+      : 'none';
+}
+</script>
 
 </body>
 </html>
