@@ -5,11 +5,6 @@
   <title>Territórios da Semana</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- força não usar cache antigo -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-
   <style>
     body {
       margin: 0;
@@ -76,29 +71,20 @@
 <header>Territórios da Semana</header>
 
 <div class="botoes">
-  <button onclick="abrir('segunda')">Segunda</button>
-  <button onclick="abrir('terca')">Terça</button>
-  <button onclick="abrir('quarta')">Quarta</button>
-  <button onclick="abrir('quinta')">Quinta</button>
-  <button onclick="abrir('sexta')">Sexta</button>
-  <button onclick="abrirDomingo()">Domingo</button>
-  <button onclick="abrir('rural')">Campo Rural</button>
-  <button class="feriado" onclick="abrir('feriado')">Feriado</button>
+  <!-- TODOS OS DIAS APONTAM PARA cartoes.html -->
+  <button onclick="window.location.href='cartoes.html'">Segunda</button>
+  <button onclick="window.location.href='cartoes.html'">Terça</button>
+  <button onclick="window.location.href='cartoes.html'">Quarta</button>
+  <button onclick="window.location.href='cartoes.html'">Quinta</button>
+  <button onclick="window.location.href='cartoes.html'">Sexta</button>
+  <button onclick="window.location.href='cartoes.html'">Domingo</button>
+  <button onclick="window.location.href='cartoes.html'">Campo Rural</button>
+  <button class="feriado" onclick="window.location.href='cartoes.html'">Feriado</button>
 </div>
 
 <footer>
   Organização de Territórios – Congregação Bela Vista
 </footer>
-
-<script>
-  function abrir(pagina) {
-    window.location.href = pagina + ".html";
-  }
-
-  function abrirDomingo() {
-    window.location.href = "domingo.html";
-  }
-</script>
 
 </body>
 </html>
