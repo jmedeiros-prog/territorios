@@ -22,15 +22,15 @@
       font-weight: bold;
     }
 
-    .dias {
+    .botoes {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 10px;
-      margin: 20px 10px;
+      margin: 25px 10px;
     }
 
-    .dias button {
+    .botoes button {
       background-color: #fff;
       border: 1px solid #4a6fa5;
       color: #4a6fa5;
@@ -38,58 +38,28 @@
       border-radius: 20px;
       cursor: pointer;
       font-size: 14px;
+      white-space: nowrap;
     }
 
-    .dias button:hover {
+    .botoes button:hover {
       background-color: #4a6fa5;
       color: #fff;
-    }
-
-    .card {
-      background: #fff;
-      max-width: 420px;
-      margin: 30px auto;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-      text-align: center;
-    }
-
-    .card h2 {
-      margin-top: 0;
-      color: #4a6fa5;
-    }
-
-    .extra-buttons {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      margin-top: 15px;
     }
 
     .btn-rural {
-      background-color: #4a6fa5;
-      color: #fff;
-      border: none;
-      padding: 10px 22px;
-      border-radius: 20px;
-      font-size: 14px;
-      cursor: pointer;
+      border-color: #4a6fa5;
+      font-weight: bold;
     }
 
     .btn-feriado {
-      background-color: #d4a017;
-      color: #fff;
-      border: none;
-      padding: 10px 22px;
-      border-radius: 20px;
-      font-size: 14px;
-      cursor: pointer;
+      border-color: #d4a017;
+      color: #d4a017;
+      font-weight: bold;
     }
 
-    .btn-rural:hover,
     .btn-feriado:hover {
-      opacity: 0.9;
+      background-color: #d4a017;
+      color: #fff;
     }
 
     footer {
@@ -107,30 +77,23 @@
     Territórios da Semana
   </header>
 
-  <!-- Botões dos dias -->
-  <div class="dias">
-    <button onclick="selecionarDia('segunda')">Segunda</button>
-    <button onclick="selecionarDia('terca')">Terça</button>
-    <button onclick="selecionarDia('quarta')">Quarta</button>
-    <button onclick="selecionarDia('quinta')">Quinta</button>
-    <button onclick="selecionarDia('sexta')">Sexta</button>
-    <button onclick="selecionarDia('sabado')">Sábado</button>
-    <button onclick="selecionarDia('domingo')">Domingo</button>
-  </div>
+  <!-- TODOS OS BOTÕES JUNTOS -->
+  <div class="botoes">
+    <button onclick="selecionar('segunda')">Segunda</button>
+    <button onclick="selecionar('terca')">Terça</button>
+    <button onclick="selecionar('quarta')">Quarta</button>
+    <button onclick="selecionar('quinta')">Quinta</button>
+    <button onclick="selecionar('sexta')">Sexta</button>
+    <button onclick="selecionar('sabado')">Sábado</button>
+    <button onclick="selecionar('domingo')">Domingo</button>
 
-  <!-- Card central -->
-  <div class="card">
-    <h2>Escolha uma opção</h2>
+    <button class="btn-rural" onclick="selecionar('rural')">
+      Campo Rural
+    </button>
 
-    <div class="extra-buttons">
-      <button class="btn-rural" onclick="selecionarOpcao('rural')">
-        Campo Rural
-      </button>
-
-      <button class="btn-feriado" onclick="selecionarOpcao('feriado')">
-        Feriado
-      </button>
-    </div>
+    <button class="btn-feriado" onclick="selecionar('feriado')">
+      Feriado
+    </button>
   </div>
 
   <footer>
@@ -138,16 +101,10 @@
   </footer>
 
   <script>
-    function selecionarDia(dia) {
-      alert("Dia selecionado: " + dia);
-      // depois você pode trocar esse alert por:
-      // window.location.href = dia + ".html";
-    }
-
-    function selecionarOpcao(opcao) {
-      alert("Opção selecionada: " + opcao);
-      // depois você pode apontar para:
-      // rural.html ou feriado.html
+    function selecionar(opcao) {
+      alert("Selecionado: " + opcao);
+      // depois você troca por:
+      // window.location.href = opcao + ".html";
     }
   </script>
 
