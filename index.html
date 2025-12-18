@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Territórios de Pregação</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, sans-serif; text-align: center; background:#f4f4f4;">
+
+  <h1>Territórios da Semana</h1>
+
+  <div style="margin-bottom:20px;">
+    <button onclick="mostrarDia(1)">Segunda</button>
+    <button onclick="mostrarDia(2)">Terça</button>
+    <button onclick="mostrarDia(3)">Quarta</button>
+    <button onclick="mostrarDia(4)">Quinta</button>
+    <button onclick="mostrarDia(5)">Sexta</button>
+    <button onclick="mostrarDia(6)">Sábado</button>
+    <button onclick="mostrarDia(0)">Domingo</button>
+  </div>
+
+  <div id="conteudo"></div>
+
+<script>
+function mostrarDia(dia) {
+  const conteudo = document.getElementById("conteudo");
+  conteudo.innerHTML = "";
+
+  if (dia === 0) {
+    conteudo.innerHTML = `
+      <h2>Territórios de Domingo</h2>
+
+      <h3>Bela Vista 1 – Edson Reis</h3>
+      <img src="imagens/bela_vista_1.jpg" style="max-width:90%;margin-bottom:20px;">
+
+      <h3>Bela Vista 2 – George Moura</h3>
+      <img src="imagens/bela_vista_2.jpg" style="max-width:90%;margin-bottom:20px;">
+
+      <h3>Caxambu – Willian Guimarães</h3>
+      <img src="imagens/caxambu.jpg" style="max-width:90%;margin-bottom:20px;">
+
+      <h3>Meireles – Edson Ornagui</h3>
+      <img src="imagens/meireles.jpg" style="max-width:90%;margin-bottom:20px;">
+    `;
+  } else {
+    conteudo.innerHTML = `
+      <h2>Território Rural</h2>
+      <img src="imagens/rural.jpg" style="max-width:90%;">
+    `;
+  }
+}
+
+window.onload = function () {
+  const hoje = new Date().getDay();
+  mostrarDia(hoje);
+};
+</script>
+
+</body>
+</html>
