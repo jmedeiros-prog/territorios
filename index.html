@@ -27,15 +27,15 @@
       flex-wrap: wrap;
       justify-content: center;
       gap: 10px;
-      margin: 25px 10px;
+      margin: 30px 10px;
     }
 
     .botoes button {
       background-color: #fff;
       border: 1px solid #4a6fa5;
       color: #4a6fa5;
-      padding: 8px 18px;
-      border-radius: 20px;
+      padding: 10px 20px;
+      border-radius: 22px;
       cursor: pointer;
       font-size: 14px;
       white-space: nowrap;
@@ -47,7 +47,6 @@
     }
 
     .btn-rural {
-      border-color: #4a6fa5;
       font-weight: bold;
     }
 
@@ -63,7 +62,7 @@
     }
 
     footer {
-      margin-top: 40px;
+      margin-top: 50px;
       text-align: center;
       font-size: 12px;
       color: #777;
@@ -77,36 +76,18 @@
     Territórios da Semana
   </header>
 
-  <!-- TODOS OS BOTÕES JUNTOS -->
+  <!-- TODOS OS BOTÕES -->
   <div class="botoes">
-    <button onclick="selecionar('segunda')">Segunda</button>
-    <button onclick="selecionar('terca')">Terça</button>
-    <button onclick="selecionar('quarta')">Quarta</button>
-    <button onclick="selecionar('quinta')">Quinta</button>
-    <button onclick="selecionar('sexta')">Sexta</button>
-    <button onclick="selecionar('sabado')">Sábado</button>
-    <button onclick="selecionar('domingo')">Domingo</button>
+    <button onclick="abrir('segunda')">Segunda</button>
+    <button onclick="abrir('terca')">Terça</button>
+    <button onclick="abrir('quarta')">Quarta</button>
+    <button onclick="abrir('quinta')">Quinta</button>
+    <button onclick="abrir('sexta')">Sexta</button>
+    <button onclick="abrir('sabado')">Sábado</button>
+    <button onclick="abrir('domingo')">Domingo</button>
 
-    <button class="btn-rural" onclick="selecionar('rural')">
+    <button class="btn-rural" onclick="abrir('rural')">
       Campo Rural
     </button>
 
-    <button class="btn-feriado" onclick="selecionar('feriado')">
-      Feriado
-    </button>
-  </div>
-
-  <footer>
-    Organização de Territórios - Congregação Bela Vista
-  </footer>
-
-  <script>
-    function selecionar(opcao) {
-      alert("Selecionado: " + opcao);
-      // depois você troca por:
-      // window.location.href = opcao + ".html";
-    }
-  </script>
-
-</body>
-</html>
+    <button class="btn-feriado
