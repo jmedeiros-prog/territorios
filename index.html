@@ -2,59 +2,171 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Territórios de Pregação</title>
+  <title>Territórios da Semana</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    :root {
+      --jw-blue: #4a6da7;
+      --jw-bg: #f5f7fa;
+      --card-bg: #ffffff;
+      --text: #2c2c2c;
+      --muted: #7a7a7a;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--jw-bg);
+      color: var(--text);
+      text-align: center;
+    }
+
+    header {
+      background: var(--jw-blue);
+      color: white;
+      padding: 20px 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.8em;
+      font-weight: 500;
+    }
+
+    .dias {
+      margin: 20px 0;
+    }
+
+    .dias button {
+      background: white;
+      border: 1px solid var(--jw-blue);
+      color: var(--jw-blue);
+      padding: 8px 14px;
+      margin: 4px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.2s ease;
+    }
+
+    .dias button:hover {
+      background: var(--jw-blue);
+      color: white;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 10px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 20px;
+      margin: 15px 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      color: var(--jw-blue);
+      margin-top: 0;
+    }
+
+    .grupo {
+      margin-top: 20px;
+    }
+
+    .grupo h3 {
+      margin-bottom: 8px;
+      color: var(--jw-blue);
+    }
+
+    .placeholder {
+      padding: 35px;
+      border: 2px dashed #cfd6e0;
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 0.95em;
+    }
+
+    footer {
+      margin: 30px 0 15px;
+      font-size: 0.8em;
+      color: #777;
+    }
+  </style>
 </head>
-<body style="font-family: Arial, sans-serif; text-align: center; background:#f4f4f4;">
 
+<body>
+
+<header>
   <h1>Territórios da Semana</h1>
+</header>
 
-  <div style="margin-bottom:20px;">
-    <button onclick="mostrarDia(1)">Segunda</button>
-    <button onclick="mostrarDia(2)">Terça</button>
-    <button onclick="mostrarDia(3)">Quarta</button>
-    <button onclick="mostrarDia(4)">Quinta</button>
-    <button onclick="mostrarDia(5)">Sexta</button>
-    <button onclick="mostrarDia(6)">Sábado</button>
-    <button onclick="mostrarDia(0)">Domingo</button>
-  </div>
+<div class="dias">
+  <button onclick="mostrarDia(1)">Segunda</button>
+  <button onclick="mostrarDia(2)">Terça</button>
+  <button onclick="mostrarDia(3)">Quarta</button>
+  <button onclick="mostrarDia(4)">Quinta</button>
+  <button onclick="mostrarDia(5)">Sexta</button>
+  <button onclick="mostrarDia(6)">Sábado</button>
+  <button onclick="mostrarDia(0)">Domingo</button>
+</div>
 
-  <div id="conteudo"></div>
+<div class="container" id="conteudo"></div>
 
 <script>
 function mostrarDia(dia) {
-  const conteudo = document.getElementById("conteudo");
-  conteudo.innerHTML = "";
+  const c = document.getElementById("conteudo");
+  c.innerHTML = "";
 
   if (dia === 0) {
-    conteudo.innerHTML = `
-      <h2>Territórios de Domingo</h2>
+    c.innerHTML = `
+      <div class="card">
+        <h2>Territórios de Domingo</h2>
 
-      <h3>Bela Vista 1 – Edson Reis</h3>
-      <img src="imagens/bela_vista_1.jpg" style="max-width:90%;margin-bottom:20px;">
+        <div class="grupo">
+          <h3>Bela Vista 1 – Edson Reis</h3>
+          <div class="placeholder">Cartão do território</div>
+        </div>
 
-      <h3>Bela Vista 2 – George Moura</h3>
-      <img src="imagens/bela_vista_2.jpg" style="max-width:90%;margin-bottom:20px;">
+        <div class="grupo">
+          <h3>Bela Vista 2 – George Moura</h3>
+          <div class="placeholder">Cartão do território</div>
+        </div>
 
-      <h3>Caxambu – Willian Guimarães</h3>
-      <img src="imagens/caxambu.jpg" style="max-width:90%;margin-bottom:20px;">
+        <div class="grupo">
+          <h3>Caxambu – Willian Guimarães</h3>
+          <div class="placeholder">Cartão do território</div>
+        </div>
 
-      <h3>Meireles – Edson Ornagui</h3>
-      <img src="imagens/meireles.jpg" style="max-width:90%;margin-bottom:20px;">
+        <div class="grupo">
+          <h3>Meireles – Edson Ornagui</h3>
+          <div class="placeholder">Cartão do território</div>
+        </div>
+      </div>
     `;
   } else {
-    conteudo.innerHTML = `
-      <h2>Território Rural</h2>
-      <img src="imagens/rural.jpg" style="max-width:90%;">
+    c.innerHTML = `
+      <div class="card">
+        <h2>Território Rural</h2>
+        <div class="placeholder">
+          Cartão do território rural
+        </div>
+      </div>
     `;
   }
 }
 
-window.onload = function () {
-  const hoje = new Date().getDay();
-  mostrarDia(hoje);
-};
+window.onload = () => mostrarDia(new Date().getDay());
 </script>
+
+<footer>
+  Organização de Territórios • Congregação
+</footer>
 
 </body>
 </html>
