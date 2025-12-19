@@ -167,6 +167,18 @@ a.cartao:hover {
   }
 })();
 </script>
+<script>
+function confirmarConclusao(checkbox) {
+  if (checkbox.checked) {
+    const ok = confirm(
+      "Você tem certeza que concluiu este território?"
+    );
+    if (!ok) {
+      checkbox.checked = false;
+    }
+  }
+}
+</script>
 
 </body>
 </html>
