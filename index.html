@@ -96,26 +96,18 @@
   <button onclick="window.location.href='cartoes.html#t04'">Quinta</button>
   <button onclick="window.location.href='cartoes.html#t05'">Sexta</button>
 
+  <!-- SÁBADO -->
+  <button onclick="window.location.href='cartoes.html#t06'">Sábado</button>
+
   <!-- DOMINGO -->
   <button class="domingo" onclick="toggleDomingo()">Domingo ▾</button>
 
   <div id="domingo-submenu">
     <div class="domingo-grupos">
-      <button onclick="window.location.href='cartoes.html#bv1'">
-        Bela Vista 1
-      </button>
-
-      <button onclick="window.location.href='cartoes.html#bv2'">
-        Bela Vista 2
-      </button>
-
-      <button onclick="window.location.href='cartoes.html#cax'">
-        Caxambu
-      </button>
-
-      <button onclick="window.location.href='cartoes.html#mei'">
-        Meireles
-      </button>
+      <button onclick="window.location.href='cartoes.html#bv1'">Bela Vista 1</button>
+      <button onclick="window.location.href='cartoes.html#bv2'">Bela Vista 2</button>
+      <button onclick="window.location.href='cartoes.html#cax'">Caxambu</button>
+      <button onclick="window.location.href='cartoes.html#mei'">Meireles</button>
     </div>
   </div>
 
@@ -135,13 +127,13 @@
 </footer>
 
 <script>
-function toggleDomingo() {
-  const submenu = document.getElementById('domingo-submenu');
-  submenu.style.display =
-    submenu.style.display === 'none' || submenu.style.display === ''
-      ? 'block'
-      : 'none';
-}
+  function toggleDomingo() {
+    const submenu = document.getElementById('domingo-submenu');
+    submenu.style.display =
+      submenu.style.display === 'none' || submenu.style.display === ''
+        ? 'block'
+        : 'none';
+  }
 </script>
 
 </body>
