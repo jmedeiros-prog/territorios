@@ -1,86 +1,102 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Territórios da Semana</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Territórios da Semana</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f2f4f8;
-    }
+<style>
+body{
+  margin:0;
+  font-family: Arial, Helvetica, sans-serif;
+  background:#f2f4f8;
+}
 
-    header {
-      background: #4a6fa5;
-      color: #fff;
-      padding: 22px;
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-    }
+header{
+  background:#4a6fa5;
+  color:#fff;
+  padding:22px;
+  text-align:center;
+  font-size:24px;
+  font-weight:bold;
+}
 
-    .botoes {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 16px;
-      padding: 25px;
-      max-width: 800px;
-      margin: auto;
-    }
+/* GRID */
+.botoes{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap:16px;
+  padding:25px;
+  max-width:850px;
+  margin:auto;
+}
 
-    button {
-      background: #ffffff;
-      border: 2px solid #4a6fa5;
-      color: #4a6fa5;
-      padding: 22px 10px;
-      border-radius: 18px;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-      min-height: 70px;
-    }
+/* CARD */
+.card{
+  background:#fff;
+  border:2px solid #4a6fa5;
+  border-radius:18px;
+  padding:16px 10px;
+  cursor:pointer;
+  text-align:center;
+  transition:.2s;
+}
 
-    button:hover {
-      background: #4a6fa5;
-      color: #fff;
-    }
+.card:hover{
+  background:#4a6fa5;
+  color:#fff;
+}
 
-    .domingo {
-      background: #eef3fb;
-    }
+/* TEXTO */
+.dia{
+  font-size:14px;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  opacity:0.8;
+}
 
-    .feriado {
-      border-color: #d4a017;
-      color: #d4a017;
-    }
+.nome{
+  font-size:18px;
+  font-weight:bold;
+  margin-top:6px;
+}
 
-    .feriado:hover {
-      background: #d4a017;
-      color: #fff;
-    }
+/* Domingo */
+.domingo{
+  background:#eef3fb;
+}
 
-    /* Submenu Domingo */
-    #domingo-submenu {
-      grid-column: 1 / -1;
-      display: none;
-    }
+/* Feriado */
+.feriado{
+  border-color:#d4a017;
+  color:#d4a017;
+}
 
-    .domingo-grupos {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 16px;
-      margin-top: 10px;
-    }
+.feriado:hover{
+  background:#d4a017;
+  color:#fff;
+}
 
-    footer {
-      text-align: center;
-      font-size: 13px;
-      color: #777;
-      margin: 30px 10px;
-    }
-  </style>
+/* Submenu domingo */
+#domingo-submenu{
+  grid-column:1/-1;
+  display:none;
+}
+
+.domingo-grupos{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+  gap:16px;
+  margin-top:10px;
+}
+
+footer{
+  text-align:center;
+  font-size:13px;
+  color:#777;
+  margin:30px 10px;
+}
+</style>
 </head>
 
 <body>
@@ -90,35 +106,79 @@
 <div class="botoes">
 
   <!-- SEMANA -->
-  <button onclick="window.location.href='cartoes.html#t01'">Segunda</button>
-  <button onclick="window.location.href='cartoes.html#t02'">Terça</button>
-  <button onclick="window.location.href='cartoes.html#t03'">Quarta</button>
-  <button onclick="window.location.href='cartoes.html#t04'">Quinta</button>
-  <button onclick="window.location.href='cartoes.html#t05'">Sexta</button>
+  <div class="card" onclick="location.href='cartoes.html#t01'">
+    <div class="dia">Segunda</div>
+    <div class="nome">Willian – Tarde</div>
+  </div>
+
+  <div class="card" onclick="location.href='cartoes.html#t02'">
+    <div class="dia">Terça</div>
+    <div class="nome">Edson Ornaghi</div>
+  </div>
+
+  <div class="card" onclick="location.href='cartoes.html#t03'">
+    <div class="dia">Quarta</div>
+    <div class="nome">Edson Ornaghi – Tarde</div>
+  </div>
+
+  <div class="card" onclick="location.href='cartoes.html#t04'">
+    <div class="dia">Quinta</div>
+    <div class="nome">Edson Reis</div>
+  </div>
+
+  <div class="card" onclick="location.href='cartoes.html#t05'">
+    <div class="dia">Sexta</div>
+    <div class="nome">Anísio Santos</div>
+  </div>
 
   <!-- SÁBADO -->
-  <button onclick="window.location.href='cartoes.html#t06'">Sábado</button>
+  <div class="card" onclick="location.href='cartoes.html#t06'">
+    <div class="dia">Sábado</div>
+    <div class="nome">Territórios</div>
+  </div>
 
   <!-- DOMINGO -->
-  <button class="domingo" onclick="toggleDomingo()">Domingo ▾</button>
+  <div class="card domingo" onclick="toggleDomingo()">
+    <div class="dia">Domingo</div>
+    <div class="nome">Selecionar Grupo ▾</div>
+  </div>
 
   <div id="domingo-submenu">
     <div class="domingo-grupos">
-      <button onclick="window.location.href='cartoes.html#bv1'">Bela Vista 1</button>
-      <button onclick="window.location.href='cartoes.html#bv2'">Bela Vista 2</button>
-      <button onclick="window.location.href='cartoes.html#cax'">Caxambu</button>
-      <button onclick="window.location.href='cartoes.html#mei'">Meireles</button>
+
+      <div class="card" onclick="location.href='cartoes.html#bv1'">
+        <div class="dia">Domingo</div>
+        <div class="nome">Bela Vista 1</div>
+      </div>
+
+      <div class="card" onclick="location.href='cartoes.html#bv2'">
+        <div class="dia">Domingo</div>
+        <div class="nome">Bela Vista 2</div>
+      </div>
+
+      <div class="card" onclick="location.href='cartoes.html#cax'">
+        <div class="dia">Domingo</div>
+        <div class="nome">Caxambu</div>
+      </div>
+
+      <div class="card" onclick="location.href='cartoes.html#mei'">
+        <div class="dia">Domingo</div>
+        <div class="nome">Meireles</div>
+      </div>
+
     </div>
   </div>
 
   <!-- OUTROS -->
-  <button onclick="window.location.href='cartoes.html#rural'">
-    Campo Rural
-  </button>
+  <div class="card" onclick="location.href='cartoes.html#rural'">
+    <div class="dia">Território</div>
+    <div class="nome">Campo Rural</div>
+  </div>
 
-  <button class="feriado" onclick="window.location.href='cartoes.html#feriado'">
-    Feriado
-  </button>
+  <div class="card feriado" onclick="location.href='cartoes.html#feriado'">
+    <div class="dia">Dia Especial</div>
+    <div class="nome">Feriado</div>
+  </div>
 
 </div>
 
@@ -127,13 +187,10 @@
 </footer>
 
 <script>
-  function toggleDomingo() {
-    const submenu = document.getElementById('domingo-submenu');
-    submenu.style.display =
-      submenu.style.display === 'none' || submenu.style.display === ''
-        ? 'block'
-        : 'none';
-  }
+function toggleDomingo(){
+  const el = document.getElementById("domingo-submenu");
+  el.style.display = el.style.display === "block" ? "none" : "block";
+}
 </script>
 
 </body>
