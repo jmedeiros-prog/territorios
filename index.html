@@ -180,6 +180,11 @@ const API = 'https://script.google.com/macros/s/AKfycbwFf7FGCqqD0tLS-Uu87QBTE8to
 const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const LETRA = ['S','T','Q','Q','S','S','D'];
 const TIPOS = {tarde:'Tarde', manha:'Manhã e fim de semana', afastado:'Afastado'};
+// Escala inicial de dirigentes de sábado (da folha "Designação Saída de Campo").
+const ESCALA_INICIAL = [['2026-11-14','Rodrigo Cardoso'],['2026-11-21','Edson Ornaghi'],['2026-11-28','Edson Reis'],['2026-12-05','Anísio Santos'],
+  ['2026-12-12','João Vitor'],['2026-12-19','João Medeiros'],['2026-12-26','Elisson Takeshi'],['2027-01-02','Adilson Silva'],['2027-01-09','Willian Guimarães'],
+  ['2027-01-16','Rodrigo Cardoso'],['2027-01-23','Edson Ornaghi'],['2027-01-30','Edson Reis'],['2027-02-06','Anísio Santos'],['2027-02-13','João Vitor']];
+const escalaInicial = () => ESCALA_INICIAL.map(x => ({data:x[0], nome:x[1]}));
 const DRIVE = id => 'https://drive.google.com/file/d/' + id + '/view';
 
 /* ============ DADOS INICIAIS (cartões da pasta TERRITORIOS SITE) ============ */
@@ -211,9 +216,7 @@ function dadosIniciais(){
     {id:'dom2', dia:6, turno:'manha', grupo:'Bela Vista 2', local:'Saída do grupo', dirigente:'Willian Guimarães'},
     {id:'dom3', dia:6, turno:'manha', grupo:'Caxambu', local:'Saída do grupo', dirigente:'Takeshi'},
     {id:'dom4', dia:6, turno:'manha', grupo:'Meireles', local:'Saída do grupo', dirigente:'Edson Ornaghi'},
-    {id:'afs', dia:5, turno:'afastado', grupo:'Todos os grupos', local:'Salão do Reino', dirigente:'Todos os grupos'},
-    {id:'afa', dia:6, turno:'afastado', grupo:'Caxambu + Bela Vista 1', local:'A combinar', dirigente:'Takeshi e Edson Reis'},
-    {id:'afb', dia:6, turno:'afastado', grupo:'Meireles + Bela Vista 2', local:'A combinar', dirigente:'Edson Ornaghi e Willian Guimarães'}
+    {id:'afs', dia:5, turno:'afastado', grupo:'Todos os grupos', local:'Salão do Reino', dirigente:'Todos os grupos'}
   ].map(v => Object.assign(v, {terr:null, desde:hojeISO()}));
   const folha = [
     ['C-04','Edson O.','09-28','09-28'],['C-05','Willian','10-26','11-09'],['C-05','Edson R.','12-03','12-17'],
@@ -231,12 +234,20 @@ function dadosIniciais(){
   ];
   const historico = folha.map((x,i) => { const data = '2025-' + x[3], d = new Date(data + 'T12:00:00');
     return {id:'i'+i, terr:territorios.find(t => t.nome===x[0]).id, vaga:'', dia:(d.getDay()+6)%7, nome:x[1], para:x[1], desig:'2025-'+x[2], data, ciclo:0, reg:'importado'}; });
-  S = {v:4, territorios, vagas, historico, senha:SENHA_PADRAO};
+  S = {v:5, territorios, vagas, historico, senha:SENHA_PADRAO, escala:escalaInicial()};
   preencherVazias(); return S;
 }
 
 /* ============ ARMAZENAMENTO ============ */
 // Os dados ficam na planilha do Google. O aparelho guarda só uma cópia para abrir mais rápido.
+// Ajusta dados gravados por versões anteriores: um só território afastado (sábado e domingo) e a escala de sábado.
+function migrar(){
+  let mudou = false;
+  if(S.vagas.some(v => v.id==='afa' || v.id==='afb')){ S.vagas = S.vagas.filter(v => v.id!=='afa' && v.id!=='afb');
+    const a = S.vagas.find(v => v.id==='afs'); if(a) a.grupo = 'Todos os grupos'; mudou = true; }
+  if(!S.escala){ S.escala = escalaInicial(); mudou = true; }
+  return mudou;
+}
 let S = null, versao = 0, fila = Promise.resolve(), pendentes = 0;
 function sinc(txt){ const e = document.getElementById('sinc'); if(e) e.textContent = txt; }
 function hora(){ return new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}); }
@@ -253,7 +264,7 @@ async function buscar(){
     const r = await api();
     if(pendentes) return true;
     if(!r.estado){ dadosIniciais(); versao = r.versao; desenhar(); salvar(); return true; }
-    if(r.versao !== versao || !S){ S = r.estado; versao = r.versao; guardarLocal(); desenhar(); }
+    if(r.versao !== versao || !S){ S = r.estado; versao = r.versao; const mudou = migrar(); guardarLocal(); desenhar(); if(mudou){ salvar(); return true; } }
     sinc('Sincronizado às ' + hora()); return true;
   }catch(e){ sinc(S ? 'Sem conexão: mostrando a última versão guardada neste aparelho.' : 'Sem conexão.'); return false; }
 }
@@ -265,7 +276,7 @@ function salvar(){
     try{
       const r = await api({acao:'salvar', base:versao, estado:S});
       if(r.ok){ versao = r.versao; guardarLocal(); sinc('Salvo às ' + hora()); }
-      else if(r.conflito && r.estado){ S = r.estado; versao = r.versao; guardarLocal(); fechar(); desenhar(); sinc('Atualizado às ' + hora());
+      else if(r.conflito && r.estado){ S = r.estado; versao = r.versao; migrar(); guardarLocal(); fechar(); desenhar(); sinc('Atualizado às ' + hora());
         toast('Outra pessoa alterou os dados agora há pouco. Atualizei a tela: confira e repita o que você fez.'); }
       else falha = true;
     }catch(e){ falha = true; }
@@ -275,7 +286,7 @@ function salvar(){
   return fila;
 }
 async function carregar(){
-  try{ const c = JSON.parse(localStorage.getItem(CHAVE) || 'null'); if(c && c.S){ S = c.S; versao = c.versao; desenhar(); } }catch(e){}
+  try{ const c = JSON.parse(localStorage.getItem(CHAVE) || 'null'); if(c && c.S){ S = c.S; versao = c.versao; migrar(); desenhar(); } }catch(e){}
   if(!S) app.innerHTML = '<div class="vaziotxt">Carregando os territórios…</div>';
   const ok = await buscar();
   if(!ok && !S) app.innerHTML = '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Sem conexão</div><div class="saida">Não consegui buscar os territórios. Confira a internet.</div><div class="acoes"><button class="btn cheio" data-acao="recarregar">Tentar de novo</button></div></div>';
@@ -310,12 +321,18 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&am
 function linkOk(u){ return /^https?:\/\//i.test(u||''); }
 const terr = id => S.territorios.find(t => t.id===id);
 const vaga = id => S.vagas.find(v => v.id===id);
-function nomeVaga(v){ return DIAS[v.dia] + (v.turno==='afastado' ? ' (afastado) – ' + v.grupo : v.grupo ? ' – ' + v.grupo : ''); }
+function nomeVaga(v){ return v.turno==='afastado' ? 'Último sábado e domingo (afastado)' : DIAS[v.dia] + (v.grupo ? ' – ' + v.grupo : ''); }
 
 // Último sábado (dia 5) ou domingo (dia 6) do mês; se já passou, o do mês seguinte.
 function ultimoDoMes(a, m, dia){ const alvo = dia===5 ? 6 : 0, d = new Date(a, m+1, 0); while(d.getDay()!==alvo) d.setDate(d.getDate()-1); return iso(d); }
 function dataAfastado(dia){ const h = new Date(); let s = ultimoDoMes(h.getFullYear(), h.getMonth(), dia);
   if(s < hojeISO()){ const n = new Date(h.getFullYear(), h.getMonth()+1, 1); s = ultimoDoMes(n.getFullYear(), n.getMonth(), dia); } return s; }
+function datasAfastado(){ return [dataAfastado(5), dataAfastado(6)].sort().map(brCurto).join(' e '); }
+function ehUltimoSabado(s){ const p = s.split('-').map(Number); return ultimoDoMes(p[0], p[1]-1, 5)===s; }
+// Escala de sábado: quem dirige em cada data.
+function proxSabado(){ const d = new Date(); d.setDate(d.getDate() + (6 - d.getDay())); return iso(d); }
+function dirigenteEm(data){ const e = (S.escala||[]).find(x => x.data===data); return e ? e.nome : ''; }
+function dirigenteDe(v){ if(v.dia!==5) return v.dirigente; return dirigenteEm(v.turno==='afastado' ? dataAfastado(5) : proxSabado()) || v.dirigente; }
 function hojeEhAfastado(dia){ return (dia===5 || dia===6) && dataAfastado(dia)===hojeISO(); }
 
 /* ============ REGRAS DO RODÍZIO ============ */
@@ -336,7 +353,7 @@ function proximo(v, excluir){
 function preencherVazias(excluir){ for(const v of S.vagas){ if(!v.terr){ const p = proximo(v, excluir); if(p){ v.terr = p; v.desde = hojeISO(); } } } }
 function concluir(vagaId, nome, data){
   const v = vaga(vagaId), t = terr(v.terr); if(!t) return '';
-  S.historico.push({id:'h'+Date.now()+Math.random().toString(36).slice(2,7), terr:t.id, vaga:v.id, dia:v.dia, nome, para:v.dirigente, desig:v.desde, data, ciclo:t.ciclo, reg:new Date().toISOString()});
+  S.historico.push({id:'h'+Date.now()+Math.random().toString(36).slice(2,7), terr:t.id, vaga:v.id, dia:v.dia, nome, para:dirigenteDe(v), desig:v.desde, data, ciclo:t.ciclo, reg:new Date().toISOString()});
   let fechou = false;
   if(t.tipo!=='afastado'){
     if(!t.feitos.includes(v.dia)) t.feitos.push(v.dia);
@@ -401,12 +418,12 @@ function obsResumo(t){ const n = t.notas||[]; if(!n.length) return '';
 
 function cartao(v){
   const t = terr(v.terr), af = v.turno==='afastado';
-  const hoje = af ? dataAfastado(v.dia)===hojeISO() : (v.dia===diaHoje() && !hojeEhAfastado(v.dia));
+  const hoje = af ? (dataAfastado(5)===hojeISO() || dataAfastado(6)===hojeISO()) : (v.dia===diaHoje() && !hojeEhAfastado(v.dia));
   const espera = !af && v.dia===diaHoje() && hojeEhAfastado(v.dia);
-  let h = '<article class="card' + (hoje?' hoje':'') + '"><div class="card-topo"><span class="dia">' + esc(af ? (v.dia===5 ? 'Último sábado do mês' : 'Último domingo do mês') : (v.grupo || DIAS[v.dia])) + '</span>' +
-    (hoje ? '<span class="pill">Hoje</span>' : '<span class="pill suave">' + (af ? brCurto(dataAfastado(v.dia)) : v.turno==='tarde' ? 'Tarde' : 'Manhã') + '</span>') + '</div>';
+  let h = '<article class="card' + (hoje?' hoje':'') + '"><div class="card-topo"><span class="dia">' + esc(af ? 'Último sábado e domingo do mês' : (v.grupo || DIAS[v.dia])) + '</span>' +
+    (hoje ? '<span class="pill">Hoje</span>' : '<span class="pill suave">' + (af ? datasAfastado() : v.turno==='tarde' ? 'Tarde' : 'Manhã') + '</span>') + '</div>';
   if(espera) h += '<div class="nota">Hoje é dia de território afastado. Este cartão fica em espera.</div>';
-  h += '<div class="saida">' + (af ? 'Grupos: <b>' + esc(v.grupo) + '</b><br>' : '') + 'Saída: <b>' + esc(v.local) + '</b><br>Dirigente: <b>' + esc(v.dirigente) + '</b></div>';
+  h += '<div class="saida">' + (af ? 'Grupos: <b>' + esc(v.grupo) + '</b><br>' : '') + 'Saída: <b>' + esc(v.local) + '</b><br>' + (v.dia===5 ? 'Dirigente de ' + brCurto(af ? dataAfastado(5) : proxSabado()) : 'Dirigente') + ': <b>' + esc(dirigenteDe(v)) + '</b></div>';
   if(t){
     h += '<div class="terr">' + esc(t.nome) + '</div><div class="status">Status: em andamento</div><div class="meta">' + (t.tipo==='afastado' ? '<span class="pill esp">Afastado</span>' : pontos(t, v.dia)) +
       '<span>desde ' + brCurto(v.desde) + '</span></div>' + obsResumo(t) + '<div class="acoes">' +
@@ -422,8 +439,17 @@ function telaSemana(){
   return ''+
     '<h2>Segunda a sábado (toda semana)</h2><div class="grade">' + normais.filter(v => v.dia<6).map(cartao).join('') + '</div>' +
     '<h2>Domingo, por grupo (toda semana)</h2><div class="grade">' + normais.filter(v => v.dia===6).map(cartao).join('') + '</div>' +
-    '<h2>Afastados: só em ' + brCurto(dataAfastado(5)) + ' e ' + brCurto(dataAfastado(6)) + '</h2><p class="sub">Uma vez por mês, no último sábado e no último domingo, os grupos saem juntos para um território afastado. Nos outros fins de semana valem os cartões de sábado e de domingo acima.</p><div class="grade">' +
-    S.vagas.filter(v => v.turno==='afastado').map(cartao).join('') + '</div>';
+    '<h2>Afastado: só em ' + datasAfastado() + '</h2><p class="sub">Uma vez por mês, no último sábado e no último domingo, todos os grupos saem juntos para o mesmo território afastado, nos dois dias. Nos outros fins de semana valem os cartões de sábado e de domingo acima.</p><div class="grade">' +
+    S.vagas.filter(v => v.turno==='afastado').map(cartao).join('') + '</div>' + telaEscala();
+}
+function telaEscala(){
+  const hoje = hojeISO(), prox = proxSabado();
+  const lista = (S.escala||[]).slice().sort((a,b) => a.data.localeCompare(b.data)).filter(x => x.data >= hoje);
+  let h = '<h2 id="escala">Escala de sábado: dirigentes</h2><p class="sub">O dirigente recebe um lembrete por WhatsApp dois dias antes e um dia antes do sábado dele.</p>';
+  if(admin) h += '<div class="acoes" style="margin-bottom:10px"><button class="btn mini" data-acao="escala" data-id="">Adicionar sábado</button></div>';
+  if(!lista.length) return h + '<div class="vaziotxt">Nenhum sábado futuro na escala.</div>';
+  return h + '<div class="lista">' + lista.map(x => '<div class="linha"><div><b>' + esc(x.nome) + '</b><small>' + br(x.data) + (x.data===prox ? ' · próximo sábado' : '') +
+    (ehUltimoSabado(x.data) ? ' · território afastado' : '') + '</small></div>' + (admin ? '<button class="btn mini" data-acao="escala" data-id="' + x.data + '">Editar</button>' : '') + '</div>').join('') + '</div>';
 }
 function telaControle(){
   const pre = mesRef.a + '-' + String(mesRef.m+1).padStart(2,'0');
@@ -443,7 +469,7 @@ function telaControle(){
       h += '<tr><td>' + esc(t.nome) + '<small>' + (tipo==='afastado' ? (ult ? 'última: ' + brCurto(ult) : 'ainda não saiu') :
         'ciclo ' + t.ciclo + ' · ' + dias.filter(d => t.feitos.includes(d)).length + '/' + dias.length) + '</small></td>';
       for(let d=0; d<7; d++){
-        const feito = doMes.find(x => x.terr===t.id && x.dia===d), andando = S.vagas.some(v => v.terr===t.id && v.dia===d);
+        const feito = doMes.find(x => x.terr===t.id && x.dia===d), andando = S.vagas.some(v => v.terr===t.id && (v.dia===d || (v.turno==='afastado' && d>=5)));
         let c = dias.includes(d) ? '<span class="cel">·</span>' : '';
         if(feito) c = '<span class="cel mes-ok" title="Concluído em ' + br(feito.data) + ' por ' + esc(feito.nome) + '">' + feito.data.slice(8) + '</span>';
         else if(t.feitos.includes(d)) c = '<span class="cel ciclo-ok" title="Feito em mês anterior, neste ciclo">✓</span>';
@@ -476,7 +502,7 @@ function telaRegistro(){
       const regs = S.historico.filter(x => x.terr===t.id && x.data>=ini && x.data<=fim).map(x => ({para:x.para || x.nome, desig:x.desig || '', concl:x.data}))
         .sort((a,b) => (a.desig||a.concl).localeCompare(b.desig||b.concl));
       const v = S.vagas.find(x => x.terr===t.id);
-      if(v && v.desde>=ini && v.desde<=fim) regs.push({para:v.dirigente, desig:v.desde, concl:''});
+      if(v && v.desde>=ini && v.desde<=fim) regs.push({para:dirigenteDe(v), desig:v.desde, concl:''});
       let antes = ''; for(const x of S.historico){ if(x.terr===t.id && x.data<ini && x.data>antes) antes = x.data; }
       for(let i=0; i<Math.max(1, Math.ceil(regs.length/4)); i++){
         h += '<tr><td>' + (i ? '' : esc(t.nome)) + '</td><td>' + (i || !antes ? '' : br(antes)) + '</td>';
@@ -497,7 +523,7 @@ async function baixarPdf(){
     const regs = S.historico.filter(x => x.terr===t.id && x.data>=ini && x.data<=fim).map(x => ({para:x.para || x.nome, desig:x.desig || '', concl:x.data}))
       .sort((a,b) => (a.desig||a.concl).localeCompare(b.desig||b.concl));
     const v = S.vagas.find(x => x.terr===t.id);
-    if(v && v.desde>=ini && v.desde<=fim) regs.push({para:v.dirigente, desig:v.desde, concl:''});
+    if(v && v.desde>=ini && v.desde<=fim) regs.push({para:dirigenteDe(v), desig:v.desde, concl:''});
     let antes = ''; for(const x of S.historico){ if(x.terr===t.id && x.data<ini && x.data>antes) antes = x.data; }
     for(let i=0; i<Math.max(1, Math.ceil(regs.length/4)); i++){
       const a = [{content:t.nome, rowSpan:2, styles:Object.assign({fontStyle:'bold'}, centro)}, {content:i ? '' : br(antes), rowSpan:2, styles:centro}], b = [];
@@ -593,6 +619,13 @@ const janelas = {
   senha(){ abrir('<form data-form="senha"><h3>Trocar senha</h3><p>Senha da administração.</p><div class="campo"><label for="f-nova">Nova senha</label><input id="f-nova" autocomplete="off"></div>' + botoes('Salvar') + '</form>'); },
   desfazer(id){ const h = S.historico.find(x => x.id===id), t = terr(h.terr);
     abrir('<form data-form="desfazer" data-id="' + id + '"><h3>Desfazer conclusão?</h3><p>' + esc(t ? t.nome : '') + ', ' + br(h.data) + ', por ' + esc(h.nome) + '. O cartão volta para a saída em que estava.</p>' + botoes('Desfazer', 'perigo') + '</form>'); },
+  escala(data){ const e = (S.escala||[]).find(x => x.data===data) || {data:'', nome:''}, nomes = [...new Set((S.escala||[]).map(x => x.nome))].sort();
+    abrir('<form data-form="escala" data-id="' + esc(data||'') + '"><h3>' + (data ? 'Editar sábado' : 'Adicionar sábado') + '</h3><p>Escreva o nome igual ao da aba "Dirigentes" da planilha, para o aviso de WhatsApp achar o telefone.</p>' +
+      '<div class="campo"><label for="f-edata">Data do sábado</label><input id="f-edata" type="date" value="' + esc(e.data) + '"></div>' +
+      '<div class="campo"><label for="f-enome">Dirigente</label><input id="f-enome" list="f-nomes" autocomplete="off" value="' + esc(e.nome) + '"><datalist id="f-nomes">' + nomes.map(n => '<option value="' + esc(n) + '">').join('') + '</datalist></div>' +
+      '<p class="erro" id="erro"></p><div class="acoes"><button type="button" class="btn leve" data-acao="fechar">Cancelar</button>' +
+      (data ? '<button type="button" class="btn perigo" data-acao="esc-apagar" data-id="' + esc(data) + '">Remover</button>' : '') + '<button type="submit" class="btn cheio">Salvar</button></div></form>'); },
+  'esc-apagar'(data){ if(!admin) return; S.escala = (S.escala||[]).filter(x => x.data!==data); salvar(); fechar(); desenhar(); toast('Sábado removido da escala.'); },
   obs(id){ const t = terr(id), n = t.notas||[];
     abrir('<form data-form="obs" data-id="' + id + '"><h3>Anotações – ' + esc(t.nome) + '</h3><p>Onde parou, pontos de referência, fotos e vídeos para quem for continuar o território.</p>' +
       (n.length ? '<div class="notas">' + n.slice().reverse().map(x => '<div class="notinha"><div class="nt-topo"><small>' + esc(x.nome) + ' · ' + br(x.data) + (x.fixa ? ' · referência fixa' : '') + '</small>' +
@@ -628,6 +661,10 @@ const envios = {
     salvar(); fechar(); desenhar(); },
   senha(){ const n = val('f-nova'); if(n.length < 8) return erro('Use pelo menos 8 caracteres.'); S.senha = sha256(n); salvar(); fechar(); toast('Senha alterada.'); },
   desfazer(id){ desfazer(id); fechar(); desenhar(); toast('Conclusão desfeita.'); },
+  escala(orig){ if(!admin) return; const data = val('f-edata'), nome = val('f-enome');
+    if(!data) return erro('Informe a data.'); if(new Date(data + 'T12:00:00').getDay()!==6) return erro('Essa data não é um sábado.'); if(!nome) return erro('Informe o dirigente.');
+    S.escala = (S.escala||[]).filter(x => x.data!==orig && x.data!==data); S.escala.push({data, nome}); S.escala.sort((a,b) => a.data.localeCompare(b.data));
+    salvar(); fechar(); desenhar(); toast('Escala atualizada.'); },
   async obs(id){ const t = terr(id), texto = val('f-otxt'), nome = val('f-onome'), arqs = [...document.getElementById('f-oarq').files], fixa = document.getElementById('f-ofixa').checked;
     if(!texto && !arqs.length) return erro('Escreva a anotação ou escolha uma foto ou vídeo.');
     if(!nome) return erro('Informe seu nome.');
@@ -640,7 +677,7 @@ const envios = {
     if(!texto && !midias.length){ bt.disabled = false; bt.textContent = 'Salvar anotação'; return erro('Não consegui enviar os arquivos. Confira a internet e tente de novo.'); }
     ultimoNome = nome; const tt = terr(id) || t; (tt.notas = tt.notas || []).push({id:'o' + Date.now(), texto, nome, data:hojeISO(), fixa, midias}); salvar(); fechar(); desenhar();
     toast(falhou ? 'Anotação salva, mas ' + falhou + ' arquivo(s) não puderam ser enviados.' : 'Anotação salva em ' + t.nome + '.'); },
-  zerar(){ const senha = S.senha; dadosIniciais(); S.senha = senha; salvar(); fechar(); desenhar(); toast('Dados zerados.'); }
+  zerar(){ const senha = S.senha, escala = S.escala; dadosIniciais(); S.senha = senha; if(escala) S.escala = escala; salvar(); fechar(); desenhar(); toast('Dados zerados.'); }
 };
 
 /* ============ EVENTOS ============ */
