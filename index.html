@@ -116,6 +116,7 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .lista{display:flex;flex-direction:column;gap:8px}
 .subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
 .subnav a{text-decoration:none;font-weight:700;font-size:14px;color:var(--muted);border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px}
+.subnav .sair{margin-left:auto;font:inherit;font-weight:700;font-size:14px;color:var(--danger);border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;cursor:pointer}
 .subnav a.on{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}
 .linha{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .linha b{display:block;overflow-wrap:anywhere}
@@ -165,7 +166,6 @@ footer{text-align:center;font-size:13px;color:var(--muted);padding:0 16px 30px}
       <p>Congregação Bela Vista</p>
       <p class="hoje" id="hoje"></p>
     </div>
-    <button class="btn-adm" id="btn-adm" data-acao="adm">Administração</button>
   </div>
   <div class="lema" id="lema" hidden></div>
 </header>
@@ -666,10 +666,9 @@ function desenhar(){
   aba = ['semana','controle','programacao'].concat(ADM).includes(h) ? h : 'semana';
   const grupo = ADM.includes(aba) ? 'adm' : aba;
   document.querySelectorAll('.abas a').forEach(a => { if(a.dataset.aba===grupo) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
-  document.getElementById('btn-adm').textContent = admin ? 'Sair da administração' : 'Administração';
   if(grupo==='adm'){
     if(!admin){ app.innerHTML = '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Área protegida</div><div class="saida">O Registro, os Cartões e as Cópias de segurança só abrem com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>'; return; }
-    const sub = [['registro','Registro'],['cadastro','Cartões'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('');
+    const sub = [['registro','Registro'],['cadastro','Cartões'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '<button class="sair" data-acao="adm">Sair</button>';
     app.innerHTML = '<div class="subnav">' + sub + '</div>' + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : telaCopias());
     return;
   }
