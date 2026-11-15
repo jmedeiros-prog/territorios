@@ -114,6 +114,14 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .legenda .cel{width:18px;height:18px;border-radius:5px;font-size:10px}
 
 .lista{display:flex;flex-direction:column;gap:8px}
+.camp{background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:16px;padding:12px 14px;margin-bottom:16px;display:flex;flex-direction:column;gap:4px}
+.camp b{font-family:var(--display);font-size:18px;color:var(--accent)}
+.camp span{font-size:14px;font-weight:600}
+.camp small{font-size:13px;color:var(--muted)}
+.barra{height:10px;border-radius:6px;background:var(--surface);overflow:hidden;margin:4px 0}
+.barra i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.marcas{display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:12px}
+.marcas .marca{margin:0}
 .subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
 .subnav a{text-decoration:none;font-weight:700;font-size:14px;color:var(--muted);border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px}
 .subnav .sair{margin-left:auto;font:inherit;font-weight:700;font-size:14px;color:var(--danger);border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;cursor:pointer}
@@ -366,15 +374,48 @@ function proximoDoTipo(v, tipo, excluir){
   return c.length ? c[0].id : null;
 }
 // Sábado: a preferência é um afastado; se não houver nenhum solto, entra um cartão da manhã.
-function proximo(v, excluir){ return proximoDoTipo(v, v.turno, excluir) || (v.turno==='afastado' ? proximoDoTipo(v, 'manha', excluir) : null); }
+/* ---------- Campanha ----------
+   Durante uma campanha todos os grupos saem juntos (o domingo vira uma saída só), cada dia tem o seu território
+   até concluir e o que foi concluído não volta para a lista. O rodízio normal fica guardado e volta no fim. */
+const DOM_EXTRA = ['dom2', 'dom3', 'dom4'];
+function camp(){ return S && S.campanha && S.campanha.ativa ? S.campanha : null; }
+function vagasAtivas(){ return camp() ? S.vagas.filter(v => !DOM_EXTRA.includes(v.id)) : S.vagas; }
+// Territórios que ainda faltam na campanha, na ordem de preferência daquele dia (primeiro os do período dele).
+function candidatosCampanha(v){
+  const c = camp(), feitos = new Set(c.feitos), tipos = c.tipos || Object.keys(TIPOS);
+  const falta = S.territorios.filter(t => t.ativo && tipos.includes(t.tipo) && !feitos.has(t.id));
+  if(v.turno==='rural') return falta.filter(t => t.tipo==='rural');
+  const ordem = v.turno==='afastado' ? ['afastado','manha','tarde'] : v.turno==='manha' ? ['manha','afastado','tarde'] : ['tarde','manha','afastado'];
+  return [].concat(...ordem.map(tp => falta.filter(t => t.tipo===tp)));
+}
+function iniciarCampanha(nome, fim, tipos){
+  const salvo = S.vagas.map(v => ({id:v.id, terr:v.terr, pego:!!v.pego, por:v.por || '', desde:v.desde}));
+  S.vagas.forEach(v => { v.terr = null; v.pego = false; v.por = ''; });
+  S.campanha = {ativa:true, nome, inicio:hojeISO(), fim, tipos, feitos:[], total:S.territorios.filter(t => t.ativo && tipos.includes(t.tipo)).length, salvo};
+  preencherVazias();
+}
+function encerrarCampanha(){
+  const c = S.campanha; c.ativa = false; c.encerrada = hojeISO();
+  S.vagas.forEach(v => { const s = (c.salvo || []).find(x => x.id===v.id); v.terr = s ? s.terr : null; v.pego = s ? s.pego : false; v.por = s ? s.por : ''; if(s) v.desde = s.desde; });
+  const vistos = new Set();
+  S.vagas.forEach(v => { const t = v.terr && terr(v.terr); if(!t || !t.ativo || vistos.has(v.terr)){ v.terr = null; v.pego = false; v.por = ''; } else vistos.add(v.terr); });
+  delete c.salvo; preencherVazias();
+}
+function proximo(v, excluir){
+  if(camp()){ const oc = ocupados(), c = candidatosCampanha(v).find(t => !oc.has(t.id) && t.id!==excluir); return c ? c.id : null; }
+  return proximoDoTipo(v, v.turno, excluir) || (v.turno==='afastado' ? proximoDoTipo(v, 'manha', excluir) : null);
+}
 // O rodízio só SUGERE o cartão de cada saída. Ele fica "livre" até um irmão apertar "Pegar território";
 // só então entra em andamento e a designação vai para o registro, com a data desse dia.
-function preencherVazias(excluir){ for(const v of S.vagas){ if(!v.terr){ v.pego = false; v.por = ''; const p = proximo(v, excluir); if(p){ v.terr = p; v.desde = hojeISO(); } } } }
+function preencherVazias(excluir){ for(const v of vagasAtivas()){ if(!v.terr){ v.pego = false; v.por = ''; const p = proximo(v, excluir); if(p){ v.terr = p; v.desde = hojeISO(); } } } }
 function segundaISO(){ const d = new Date(); d.setDate(d.getDate() - (d.getDay()+6)%7); return iso(d); }
 function presos(){ return new Set(S.vagas.filter(v => v.terr && v.pego).map(v => v.terr)); }
 // Outros cartões que podem ser pegos no lugar do sugerido: mesmo período (manhã ou tarde), que ninguém pegou,
 // sem conclusão nesta semana e respeitando o rodízio (primeiro os que ainda não passaram por aquele dia).
 function alternativas(v){
+  if(camp()){ if(!v.terr) return []; const pr = presos(), sug = terr(v.terr);
+    const alt = candidatosCampanha(v).filter(t => !pr.has(t.id) && t.id!==v.terr), mesmo = alt.filter(t => sug && t.tipo===sug.tipo);
+    return mesmo.length ? mesmo : alt; }
   if(v.turno==='rural' || !v.terr) return [];
   const pr = presos(), seg = segundaISO(), ord = t => S.territorios.indexOf(t), sug = terr(v.terr);
   const solto = t => t.ativo && !pr.has(t.id) && t.id!==v.terr && !S.historico.some(x => x.terr===t.id && x.data>=seg);
@@ -393,9 +434,10 @@ function alternativas(v){
 }
 function concluir(vagaId, nome, data){
   const v = vaga(vagaId), t = terr(v.terr); if(!t) return '';
-  S.historico.push({id:'h'+Date.now()+Math.random().toString(36).slice(2,7), terr:t.id, vaga:v.id, dia:v.dia, nome, para:dirigenteDe(v), pegou:v.por || '', desig:v.desde, data, ciclo:t.ciclo, reg:new Date().toISOString()});
+  S.historico.push({id:'h'+Date.now()+Math.random().toString(36).slice(2,7), terr:t.id, vaga:v.id, dia:v.dia, nome, para:dirigenteDe(v), pegou:v.por || '', desig:v.desde, data, ciclo:t.ciclo, camp:(camp() ? camp().nome : ''), reg:new Date().toISOString()});
   let fechou = false;
-  if(!semCiclo(t.tipo)){
+  if(camp()){ if(!camp().feitos.includes(t.id)) camp().feitos.push(t.id); }
+  else if(!semCiclo(t.tipo)){
     if(!t.feitos.includes(v.dia)) t.feitos.push(v.dia);
     const dias = diasDoTipo(t.tipo);
     if(dias.length && dias.every(d => t.feitos.includes(d))){ t.feitos = []; t.ciclo++; fechou = true; }
@@ -411,8 +453,9 @@ function concluir(vagaId, nome, data){
 function desfazer(hid){
   const i = S.historico.findIndex(h => h.id===hid); if(i<0) return;
   const h = S.historico[i]; S.historico.splice(i,1);
+  if(h.camp && S.campanha) S.campanha.feitos = (S.campanha.feitos || []).filter(x => x!==h.terr);
   const t = terr(h.terr);
-  if(t && !semCiclo(t.tipo)){
+  if(t && !h.camp && !semCiclo(t.tipo)){
     const doCiclo = c => S.historico.filter(x => x.terr===t.id && x.ciclo===c);
     if(h.ciclo>0 && h.ciclo===t.ciclo-1 && doCiclo(t.ciclo).length===0) t.ciclo--;
     t.feitos = [...new Set(doCiclo(t.ciclo).map(x => x.dia))];
@@ -460,14 +503,15 @@ function cartao(v){
   const t = terr(v.terr), af = v.turno==='rural';
   const hoje = af ? (dataAfastado(5)===hojeISO() || dataAfastado(6)===hojeISO()) : (v.dia===diaHoje() && !hojeEhAfastado(v.dia));
   const espera = !af && v.dia===diaHoje() && hojeEhAfastado(v.dia);
-  let h = '<article class="card' + (hoje?' hoje':'') + '"><div class="card-topo"><span class="dia">' + esc(af ? 'Último sábado e domingo do mês' : (v.grupo ? v.grupo + ' · ' : '') + DIAS[v.dia] + ' ' + brCurto(proxData(v.dia))) + '</span>' +
+  let h = '<article class="card' + (hoje?' hoje':'') + '"><div class="card-topo"><span class="dia">' + esc(af ? 'Último sábado e domingo do mês' : (camp() && v.dia===6 ? 'Todos os grupos · ' : v.grupo ? v.grupo + ' · ' : '') + DIAS[v.dia] + ' ' + brCurto(proxData(v.dia))) + '</span>' +
     (hoje ? '<span class="pill">Hoje</span>' : '<span class="pill suave">' + (af ? datasAfastado() : v.turno==='tarde' ? 'Tarde' : 'Manhã') + '</span>') + '</div>';
   if(espera) h += '<div class="nota">Hoje é dia de território rural. Este cartão fica em espera.</div>';
   h += '<div class="saida">' + (af ? 'Grupos: <b>' + esc(v.grupo) + '</b><br>' : '') + 'Saída: <b>' + esc(v.local) + '</b><br>' + (v.dia===5 ? 'Dirigente de ' + brCurto(af ? dataAfastado(5) : proxSabado()) : 'Dirigente') + ': <b>' + esc(dirigenteDe(v)) + '</b></div>';
   if(t){
-    h += '<div class="terr">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : '<div class="status livre">Livre: sugerido pelo rodízio</div>') + '<div class="meta">' + (semCiclo(t.tipo) ? '<span class="pill esp">' + TIPOS[t.tipo] + '</span>' : '') +
+    h += '<div class="terr">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : '<div class="status livre">' + (camp() ? 'Livre: próximo da campanha' : 'Livre: sugerido pelo rodízio') + '</div>') + '<div class="meta">' + (semCiclo(t.tipo) ? '<span class="pill esp">' + TIPOS[t.tipo] + '</span>' : '') +
       (v.pego ? '<span>desde ' + brCurto(v.desde) + (v.por ? ' · ' + esc(v.por) : '') + '</span>' : '') + '</div>' + obsResumo(t) + '<div class="acoes">' +
       (linkOk(t.link) ? '<a class="btn" href="' + esc(t.link) + '" target="_blank" rel="noopener">Abrir cartão</a>' : '') +
+      (linkOk(t.video) ? '<a class="btn" href="' + esc(t.video) + '" target="_blank" rel="noopener">▶ Vídeo do território</a>' : '') +
       '<button class="btn" data-acao="obs" data-id="' + t.id + '">' + ((t.notas||[]).length ? 'Anotações (' + t.notas.length + ')' : 'Onde parou') + '</button>' +
       (v.pego ? '<button class="btn cheio" data-acao="concluir" data-id="' + v.id + '">Concluir</button>' : '<button class="btn cheio" data-acao="pegar" data-id="' + v.id + '">Pegar território</button>' +
         (alternativas(v).length ? '<button class="btn" data-acao="outros" data-id="' + v.id + '">Outros livres (' + alternativas(v).length + ')</button>' : ''));
@@ -475,11 +519,15 @@ function cartao(v){
   if(admin) h += '<button class="btn leve" data-acao="trocar" data-id="' + v.id + '">Trocar</button>';
   return h + '</div></article>';
 }
+function faixaCampanha(){ const c = camp(); if(!c) return '';
+  const n = c.feitos.length, pct = c.total ? Math.round(100 * n / c.total) : 0;
+  return '<div class="camp"><b>Campanha: ' + esc(c.nome) + '</b><span>' + (c.fim ? 'até ' + br(c.fim) + ' · ' : '') + n + ' de ' + c.total + ' territórios concluídos</span>' +
+    '<div class="barra"><i style="width:' + pct + '%"></i></div><small>Todos os grupos saem juntos. Território concluído não volta para a lista.</small></div>'; }
 function telaSemana(){
-  const normais = S.vagas.filter(v => v.turno!=='rural');
-  return ''+
+  const normais = vagasAtivas().filter(v => v.turno!=='rural');
+  return faixaCampanha() + ''+
     '<h2>Segunda a sábado (toda semana)</h2><div class="grade">' + normais.filter(v => v.dia<6).map(cartao).join('') + '</div>' +
-    '<h2>Domingo, por grupo (toda semana)</h2><div class="grade">' + normais.filter(v => v.dia===6).map(cartao).join('') + '</div>' +
+    '<h2>' + (camp() ? 'Domingo (todos os grupos juntos)' : 'Domingo, por grupo (toda semana)') + '</h2><div class="grade">' + normais.filter(v => v.dia===6).map(cartao).join('') + '</div>' +
     '<h2>Rural: só em ' + datasAfastado() + '</h2><p class="sub">Uma vez por mês, no último sábado e no último domingo, todos os grupos saem juntos para o mesmo território rural, nos dois dias. Nos outros fins de semana valem os cartões de sábado e de domingo acima.</p><div class="grade">' +
     S.vagas.filter(v => v.turno==='rural').map(cartao).join('') + '</div>' + telaEscala();
 }
@@ -597,7 +645,7 @@ function telaCadastro(){
   let h = admin ? '<div class="acoes" style="margin-bottom:14px"><button class="btn cheio" data-acao="novo">Adicionar cartão</button>' +
       '<button class="btn leve" data-acao="senha">Trocar senha</button><button class="btn perigo" data-acao="zerar">Zerar tudo</button></div>'
     : '<div class="aviso">Entre em Administração para editar cartões, tipos, links, dirigentes e locais de saída.</div>';
-  const linha = t => '<div class="linha' + (t.ativo?'':' inativo') + '"><div><b>' + esc(t.nome) + '</b><small>' + (linkOk(t.link) ? 'com cartão' : 'sem link') + (t.ativo?'':' · inativo') +
+  const linha = t => '<div class="linha' + (t.ativo?'':' inativo') + '"><div><b>' + esc(t.nome) + '</b><small>' + (linkOk(t.link) ? 'com cartão' : 'sem link') + (linkOk(t.video) ? ' · com vídeo' : ' · sem vídeo') + (t.ativo?'':' · inativo') +
     ((t.notas||[]).length ? ' · ' + t.notas.length + (t.notas.length>1 ? ' anotações' : ' anotação') : '') +
     '</small></div><div style="display:flex;gap:6px;flex:none"><button class="btn mini leve" data-acao="obs" data-id="' + t.id + '">Anotações</button>' + (admin ? '<button class="btn mini" data-acao="editar" data-id="' + t.id + '">Editar</button>' : '') + '</div></div>';
   const quando = {tarde:'rodam nas saídas da tarde', manha:'rodam nas manhãs de terça, quarta e domingo; no sábado ficam como opção', afastado:'rodam aos sábados; depois de concluído, cada um descansa 30 dias', rural:'só no último sábado e domingo do mês'};
@@ -612,7 +660,26 @@ let diaMostrado = '';
 function mostrarHoje(){ const d = new Date(), sem = d.toLocaleDateString('pt-BR', {weekday:'long'});
   document.getElementById('hoje').textContent = 'Hoje é ' + sem + ', ' + br(hojeISO()); diaMostrado = hojeISO(); }
 // Endereço da página só de leitura (programacao.html), que fica na mesma pasta do sistema.
-const ADM = ['registro', 'cadastro', 'copias', 'textos'];
+const ADM = ['registro', 'cadastro', 'campanha', 'copias', 'textos'];
+function telaCampanha(){
+  const c = S.campanha, nomes = ids => ids.map(id => terr(id)).filter(Boolean).map(t => esc(t.nome)).join(', ') || 'nenhum';
+  if(camp()){
+    const falta = S.territorios.filter(t => t.ativo && (c.tipos || []).includes(t.tipo) && !c.feitos.includes(t.id)).map(t => t.id);
+    return '<h2>Campanha em andamento</h2>' + faixaCampanha() +
+      '<div class="card"><div class="saida">Início: <b>' + br(c.inicio) + '</b>' + (c.fim ? '<br>Fim previsto: <b>' + br(c.fim) + '</b>' : '') + '</div>' +
+      '<div class="saida">Concluídos (' + c.feitos.length + '): <b>' + nomes(c.feitos) + '</b></div><div class="saida">Faltam (' + falta.length + '): <b>' + nomes(falta) + '</b></div>' +
+      '<div class="acoes"><button class="btn perigo" data-acao="camp-encerrar">Encerrar campanha</button></div></div>' +
+      '<p class="sub" style="margin-top:14px">Ao encerrar, o rodízio normal volta do ponto em que estava antes da campanha.</p>';
+  }
+  return '<h2>Campanha</h2><p class="sub" style="margin-top:0">Use em convites para o congresso, para a Celebração e outras campanhas. Enquanto ela durar, todos os grupos saem juntos de segunda a domingo, ' +
+    'cada dia tem o seu território até concluir, e o que foi concluído não volta para a lista. O rodízio normal fica guardado e volta quando você encerrar.</p>' +
+    (c && !c.ativa ? '<div class="nota" style="margin-bottom:12px">Última campanha: ' + esc(c.nome) + ', de ' + br(c.inicio) + ' a ' + br(c.encerrada || c.inicio) + ', com ' + (c.feitos || []).length + ' de ' + c.total + ' territórios concluídos.</div>' : '') +
+    '<form data-form="camp-iniciar"><div class="campo"><label for="f-cnome">Nome da campanha</label><input id="f-cnome" placeholder="Ex.: Convite para o congresso"></div>' +
+    '<div class="campo"><label for="f-cfim">Fim previsto (opcional)</label><input id="f-cfim" type="date" min="' + hojeISO() + '"></div>' +
+    '<div class="campo" style="margin-bottom:6px"><label>Territórios que participam</label></div><div class="marcas">' +
+    Object.keys(TIPOS).map(k => '<label class="marca"><input type="checkbox" id="f-ct-' + k + '" checked> ' + TIPOS[k] + ' (' + S.territorios.filter(t => t.ativo && t.tipo===k).length + ')</label>').join('') + '</div>' +
+    '<p class="erro" id="erro"></p><div class="acoes"><button type="submit" class="btn cheio">Iniciar campanha agora</button></div></form>';
+}
 // Texto bíblico da semana: a Administração cadastra uma lista e o sistema mostra um por semana, em ordem, passando no topo.
 function semanaN(){ const d = new Date(); d.setDate(d.getDate() - (d.getDay()+6)%7); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 6048e5); }
 function textoDaSemana(){ const l = ((S && S.textos) || []).filter(Boolean); return l.length ? l[semanaN() % l.length] : ''; }
@@ -668,8 +735,8 @@ function desenhar(){
   document.querySelectorAll('.abas a').forEach(a => { if(a.dataset.aba===grupo) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
   if(grupo==='adm'){
     if(!admin){ app.innerHTML = '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Área protegida</div><div class="saida">O Registro, os Cartões e as Cópias de segurança só abrem com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>'; return; }
-    const sub = [['registro','Registro'],['cadastro','Cartões'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '<button class="sair" data-acao="adm">Sair</button>';
-    app.innerHTML = '<div class="subnav">' + sub + '</div>' + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : telaCopias());
+    const sub = [['registro','Registro'],['cadastro','Cartões'],['campanha','Campanha'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '<button class="sair" data-acao="adm">Sair</button>';
+    app.innerHTML = '<div class="subnav">' + sub + '</div>' + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : aba==='campanha' ? telaCampanha() : telaCopias());
     return;
   }
   app.innerHTML = aba==='programacao' ? telaProgramacao() : aba==='controle' ? telaControle() : telaSemana();
@@ -714,10 +781,11 @@ const janelas = {
       Object.keys(TIPOS).filter(k => k!==v.turno).map(k => g(TIPOS[k], livres.filter(t => t.tipo===k))).join('') +
       '<option value="">Deixar sem cartão</option></select></div>' + botoes('Trocar') + '</form>'); },
   editar(id){ const t = id ? terr(id) : {id:'', nome:'', tipo:'manha', link:'', ativo:true};
-    abrir('<form data-form="editar" data-id="' + t.id + '"><h3>' + (id ? 'Editar cartão' : 'Novo cartão') + '</h3><p>O link é o do cartão no Google Drive.</p>' +
+    abrir('<form data-form="editar" data-id="' + t.id + '"><h3>' + (id ? 'Editar cartão' : 'Novo cartão') + '</h3><p>O link é o do cartão no Google Drive. O vídeo mostra onde o território começa e termina, para quem não conhece a região.</p>' +
       '<div class="campo"><label for="f-tnome">Nome</label><input id="f-tnome" value="' + esc(t.nome) + '"></div>' +
       '<div class="campo"><label for="f-tipo">Tipo</label><select id="f-tipo">' + opcoes(TIPOS, t.tipo) + '</select></div>' +
       '<div class="campo"><label for="f-link">Link do cartão</label><input id="f-link" type="url" inputmode="url" placeholder="https://drive.google.com/..." value="' + esc(t.link) + '"></div>' +
+      '<div class="campo"><label for="f-video">Link do vídeo do território (opcional)</label><input id="f-video" type="url" inputmode="url" placeholder="Link do Drive ou do YouTube" value="' + esc(t.video || '') + '"></div>' +
       '<div class="campo"><label for="f-ativo">Situação</label><select id="f-ativo">' + opcoes({1:'Ativo', 0:'Inativo (fora do rodízio)'}, t.ativo?'1':'0') + '</select></div>' + botoes('Salvar') + '</form>'); },
   novo(){ janelas.editar(''); },
   saida(id){ const v = vaga(id), af = v.turno==='rural';
@@ -752,6 +820,8 @@ const janelas = {
     (n.midias||[]).forEach(m => midiaDel(m.id).catch(() => {})); t.notas = t.notas.filter(x => x!==n); salvar(); desenhar(); janelas.obs(p[0]); toast('Anotação apagada.'); },
   'copia-restaurar'(id){ const c = (copias||[]).find(x => x.id===id); if(!c || !admin) return;
     abrir('<form data-form="copia-restaurar" data-id="' + esc(id) + '"><h3>Restaurar esta cópia?</h3><p>Os dados de todos voltam a ser os de <b>' + esc(c.quando) + '</b>. O que foi feito depois disso some da tela, mas antes de restaurar o sistema guarda uma cópia de como está agora.</p>' + botoes('Restaurar', 'perigo') + '</form>'); },
+  'camp-encerrar'(){ if(!admin || !camp()) return;
+    abrir('<form data-form="camp-encerrar"><h3>Encerrar a campanha?</h3><p>' + esc(camp().nome) + ': ' + camp().feitos.length + ' de ' + camp().total + ' territórios concluídos. O rodízio normal volta do ponto em que estava. Os territórios da campanha que ficaram sem concluir são liberados.</p>' + botoes('Encerrar campanha', 'perigo') + '</form>'); },
   zerar(){ abrir('<form data-form="zerar"><h3>Zerar tudo?</h3><p>Apaga para todos as conclusões registradas pelo sistema, as anotações e as alterações de cadastro, e volta ao cadastro inicial. A senha continua a mesma.</p>' + botoes('Apagar tudo', 'perigo') + '</form>'); }
 };
 const val = id => { const e = document.getElementById(id); return e ? (e.value || '').trim() : ''; };
@@ -769,9 +839,9 @@ const envios = {
     toast(terr(tid).nome + ' em andamento: ' + nomeVaga(v) + '.'); },
   adm(){ if(sha256(val('f-senha')) !== S.senha) return erro('Senha incorreta.'); admin = true; fechar(); desenhar(); },
   trocar(id){ const v = vaga(id); v.terr = val('f-terr') || null; v.pego = false; v.por = ''; v.desde = hojeISO(); salvar(); fechar(); desenhar(); },
-  editar(id){ const nome = val('f-tnome'), link = val('f-link'); if(!nome) return erro('Informe o nome.'); if(link && !linkOk(link)) return erro('O link precisa começar com https://');
+  editar(id){ const nome = val('f-tnome'), link = val('f-link'), video = val('f-video'); if(!nome) return erro('Informe o nome.'); if((link && !linkOk(link)) || (video && !linkOk(video))) return erro('Os links precisam começar com https://');
     let t = terr(id); if(!t){ t = {id:'n'+Date.now(), feitos:[], ciclo:1, notas:[]}; S.territorios.push(t); }
-    Object.assign(t, {nome, link, tipo:val('f-tipo'), ativo:val('f-ativo')==='1'});
+    Object.assign(t, {nome, link, video, tipo:val('f-tipo'), ativo:val('f-ativo')==='1'});
     if(!t.ativo) S.vagas.forEach(v => { if(v.terr===t.id) v.terr = null; });
     preencherVazias(); salvar(); fechar(); desenhar(); },
   saida(id){ const v = vaga(id); v.local = val('f-local'); v.dirigente = val('f-dir');
@@ -800,6 +870,11 @@ const envios = {
       if(!r.ok || !r.estado) throw new Error(r.erro || 'erro');
       S = r.estado; versao = r.versao; migrar(); guardarLocal(); copias = null; fechar(); desenhar(); toast('Cópia restaurada.');
     }catch(e){ bt.disabled = false; bt.textContent = 'Restaurar'; erro('Não consegui restaurar. Confira a internet e tente de novo.'); } },
+  'camp-iniciar'(){ if(!admin || camp()) return; const nome = val('f-cnome'), fim = val('f-cfim');
+    const tipos = Object.keys(TIPOS).filter(k => document.getElementById('f-ct-' + k).checked);
+    if(!nome) return erro('Dê um nome para a campanha.'); if(!tipos.length) return erro('Marque pelo menos um tipo de território.'); if(fim && fim < hojeISO()) return erro('A data de fim já passou.');
+    iniciarCampanha(nome, fim, tipos); salvar(); desenhar(); toast('Campanha iniciada. A tela Semana já mostra os territórios dela.'); },
+  'camp-encerrar'(){ if(!admin || !camp()) return; encerrarCampanha(); salvar(); fechar(); desenhar(); toast('Campanha encerrada. O rodízio normal voltou.'); },
   textos(){ if(!admin) return; const l = val('f-textos').split('\n').map(x => x.trim()).filter(Boolean);
     if(l.length > 60) return erro('Use no máximo 60 textos.'); if(l.some(x => x.length > 400)) return erro('Algum texto está muito longo. Use até 400 letras por linha.');
     S.textos = l; salvar(); desenhar(); toast(l.length ? 'Textos salvos.' : 'Lista vazia: nenhum texto aparece no topo.'); },

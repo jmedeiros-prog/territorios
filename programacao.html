@@ -105,11 +105,13 @@ let lemaAtual = null;
 function mostrarLema(){ const t = textoDaSemana(); if(t===lemaAtual) return; lemaAtual = t;
   const el = document.getElementById('lema'); el.hidden = !t; el.innerHTML = t ? '<span style="--dur:' + Math.max(14, Math.round(t.length * 0.22)) + 's">' + esc(t) + '</span>' : ''; }
 
+function emCampanha(){ return !!(S && S.campanha && S.campanha.ativa); }
 function cartao(v, data, rural){
   const t = terr(v.terr), hoje = data===hojeISO();
   const dirigente = (v.dia===5 && dirigenteEm(data)) || v.dirigente;
   let h = '<div class="card' + (hoje ? ' hoje' : '') + '">';
   if(rural) h += '<div class="grupo">Todos os grupos juntos</div>';
+  else if(emCampanha() && v.dia===6) h += '<div class="grupo">Todos os grupos juntos</div>';
   else if(v.grupo) h += '<div class="grupo">' + esc(v.grupo) + '</div>';
   h += '<div class="linha1"><div class="terr' + (t ? '' : ' vazio') + '">' + esc(t ? t.nome : 'Território a definir') + '</div>' +
     '<span class="pill">' + (rural ? 'Manhã' : v.turno==='tarde' ? 'Tarde' : 'Manhã') + '</span></div>';
@@ -117,7 +119,8 @@ function cartao(v, data, rural){
   if(t){
     h += '<div class="tags">' + (TIPO[t.tipo] ? '<span class="pill esp">' + TIPO[t.tipo] + '</span>' : '') +
       (v.pego ? '<span class="pill ok">Em andamento</span>' : '<span class="pill">Previsto</span>') + '</div>';
-    if(linkOk(t.link)) h += '<a class="mapa" href="' + esc(t.link) + '" target="_blank" rel="noopener">Ver cartão do território</a>';
+    if(linkOk(t.link)) h += '<a class="mapa" href="' + esc(t.link) + '" target="_blank" rel="noopener">Ver cartão do território</a> ';
+    if(linkOk(t.video)) h += '<a class="mapa" href="' + esc(t.video) + '" target="_blank" rel="noopener">▶ Vídeo do território</a>';
   }
   return h + '</div>';
 }
@@ -128,10 +131,13 @@ function desenhar(){
   diaMostrado = hojeISO();
   if(!S) return;
   mostrarLema();
-  const rural = (S.vagas||[]).find(v => v.id==='afs'), normais = (S.vagas||[]).filter(v => v.id!=='afs');
+  const rural = (S.vagas||[]).find(v => v.id==='afs'), normais = (S.vagas||[]).filter(v => v.id!=='afs' && !(emCampanha() && ['dom2','dom3','dom4'].includes(v.id)));
   const dRural = [dataRural(5), dataRural(6)];
   // Os próximos 7 dias, a partir de hoje.
   let h = '';
+  if(emCampanha()){ const c = S.campanha, n = (c.feitos||[]).length;
+    h += '<div class="card" style="border-color:var(--accent);background:var(--accent-soft)"><div class="terr">Campanha: ' + esc(c.nome) + '</div><div class="info">' + (c.fim ? 'Até <b>' + br(c.fim) + '</b> · ' : '') +
+      '<b>' + n + ' de ' + c.total + '</b> territórios concluídos<br>Todos os grupos saem juntos, de segunda a domingo.</div></div>'; }
   for(let i=0; i<7; i++){
     const dt = new Date(); dt.setDate(dt.getDate() + i); const data = iso(dt), dia = (dt.getDay()+6)%7;
     const doDia = normais.filter(v => v.dia===dia), ehRural = rural && dRural.includes(data);
