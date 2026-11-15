@@ -604,7 +604,7 @@ function telaProgramacao(){
     '<div class="card"><div class="campo" style="margin:0"><label for="f-link">Link da programação</label><input id="f-link" readonly value="' + esc(link) + '"></div>' +
     '<div class="acoes"><button class="btn cheio" data-acao="copiar-link">Copiar link</button>' +
     '<a class="btn" href="' + esc(link) + '" target="_blank" rel="noopener">Abrir programação</a>' +
-    '<a class="btn" href="https://wa.me/?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div></div>' +
+    '<a class="btn" data-acao="zap-link" href="https://api.whatsapp.com/send?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div></div>' +
     '<p class="sub" style="margin-top:14px">Compartilhe somente este link no grupo. O endereço do sistema fica só com os dirigentes.</p>';
 }
 function desenhar(){
@@ -747,6 +747,8 @@ document.addEventListener('click', e => {
   if(a==='fechar-fundo'){ if(e.target===el) fechar(); return; }
   if(a==='fechar') return fechar();
   if(a==='mes'){ const d = new Date(mesRef.a, mesRef.m + Number(id), 1); mesRef = {a:d.getFullYear(), m:d.getMonth()}; return desenhar(); }
+  // O link abre o WhatsApp com a mensagem pronta; por garantia, o endereço também vai para a área de transferência.
+  if(a==='zap-link'){ try{ navigator.clipboard.writeText(linkProgramacao()).then(() => toast('Escolha a conversa no WhatsApp. O link também foi copiado.'), () => {}); }catch(err){} return; }
   if(a==='copiar-link'){ const campo = document.getElementById('f-link');
     const feito = () => toast('Link copiado. Agora é só colar no grupo.'), manual = () => { campo.focus(); campo.select(); toast('Segure o dedo sobre o link e escolha Copiar.'); };
     try{ navigator.clipboard.writeText(campo.value).then(feito, manual); }catch(err){ manual(); } return; }
