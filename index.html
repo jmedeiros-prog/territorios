@@ -183,7 +183,10 @@ const CHAVE = 'rodizio-territorios-online-v1';
 const API = 'https://script.google.com/macros/s/AKfycbwFf7FGCqqD0tLS-Uu87QBTE8toIQSTmswOY3L20LdcN_bRSyArLJGpXV-_TF8a3w/exec';
 const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const LETRA = ['S','T','Q','Q','S','S','D'];
-const TIPOS = {tarde:'Tarde', manha:'Manhã e fim de semana', afastado:'Afastado'};
+const TIPOS = {tarde:'Tarde', manha:'Manhã e fim de semana', afastado:'Afastado', rural:'Rural'};
+// Afastados e rurais não seguem a contagem de dias: rodam por ordem de quem está há mais tempo sem sair.
+const semCiclo = tipo => tipo==='afastado' || tipo==='rural';
+const RURAIS = ['Tigrão', 'Tanque Velho', 'Aparecidinha'];
 // Escala inicial de dirigentes de sábado (da folha "Designação Saída de Campo").
 const ESCALA_INICIAL = [['2026-11-14','Rodrigo Cardoso'],['2026-11-21','Edson Ornaghi'],['2026-11-28','Edson Reis'],['2026-12-05','Anísio Santos'],
   ['2026-12-12','João Vitor'],['2026-12-19','João Medeiros'],['2026-12-26','Elisson Takeshi'],['2027-01-02','Adilson Silva'],['2027-01-09','Willian Guimarães'],
@@ -202,10 +205,10 @@ function dadosIniciais(){
     ['C-10','manha','1Ni_W_cXS_rSSTmVBn-N7bTMMjp-9VtGv'],
     ['T10','afastado','1_WDS3nOHiwYdRDha0jvA2fZ40ecwNIiZ'],['T11','afastado','1A-we-wVH933ehw5WpPXtyMrJyVHuksqW'],['T12','afastado','1t36NWyxgLR8Wg8ydhzuhgPDLh4aZBqFt'],
     ['Chácara Dora 01','afastado','16lmsu9gWvedoXzyaxXF7CovZUcTCyoe2'],['Chácara Dora 02','afastado','10bIpdAPMqMxNiKFn_y97R8MCzpIeSLB6'],
-    ['Tigrão','afastado','1KmYefg3lDxUUifcKO3e4O-4Gw3ujU-mg'],['Tanque Velho','afastado','1AgZGr9uPCVdTBwgcsQ2FxuKS0O69_Xkj'],
+    ['Tigrão','rural','1KmYefg3lDxUUifcKO3e4O-4Gw3ujU-mg'],['Tanque Velho','rural','1AgZGr9uPCVdTBwgcsQ2FxuKS0O69_Xkj'],
     ['Igaveta 01','afastado','13QULlABA4dzhAVXGzlCP0KUgd5eJN_Te'],['Igaveta 02','afastado','1e7mfWKALA8nm5Ds2-9SRthTc42fpTSNp'],
     ['Viçoso 01','afastado','1s_iniRlpl2yqqF_BQkuHjQklj05VoTkc'],['Viçoso 02','afastado','1FSONuRt16uYybxP2xV6P7VebT5s48cdA'],
-    ['Aparecidinha','afastado','1rY4f3ZFBQvJVC-7_7BojBpah3JuVyAUq'],['Caxambu','afastado','1qmjZBb4TNDSNFnxr5YEIhFckqK3hWwta'],
+    ['Aparecidinha','rural','1rY4f3ZFBQvJVC-7_7BojBpah3JuVyAUq'],['Caxambu','afastado','1qmjZBb4TNDSNFnxr5YEIhFckqK3hWwta'],
     ['Meireles','afastado','1575jRh6DBll8yxHAuB9vc13ELQsKZvIS'],['F-01','manha','1CE_7NjYLJX7SlBjTFTTYS4ULblybyZnF']
   ];
   const territorios = lista.map((x,i) => ({id:'k'+String(i+1).padStart(2,'0'), nome:x[0], tipo:x[1], link:DRIVE(x[2]), feitos:[], ciclo:1, ativo:true, notas:[]}));
@@ -215,16 +218,16 @@ function dadosIniciais(){
     {id:'qua', dia:2, turno:'manha', grupo:'', local:'Salão do Reino', dirigente:'Edson Ornaghi'},
     {id:'qui', dia:3, turno:'tarde', grupo:'', local:'Casa Irmão Eduardo', dirigente:'Edson Reis'},
     {id:'sex', dia:4, turno:'tarde', grupo:'', local:'Salão do Reino', dirigente:'Anísio Santos'},
-    {id:'sab', dia:5, turno:'manha', grupo:'', local:'Salão do Reino', dirigente:'Todos os grupos'},
+    {id:'sab', dia:5, turno:'afastado', grupo:'', local:'Salão do Reino', dirigente:'Todos os grupos'},
     {id:'dom1', dia:6, turno:'manha', grupo:'Bela Vista 1', local:'Saída do grupo', dirigente:'Edson Reis'},
     {id:'dom2', dia:6, turno:'manha', grupo:'Bela Vista 2', local:'Saída do grupo', dirigente:'Willian Guimarães'},
     {id:'dom3', dia:6, turno:'manha', grupo:'Caxambu', local:'Saída do grupo', dirigente:'Takeshi'},
     {id:'dom4', dia:6, turno:'manha', grupo:'Meireles', local:'Saída do grupo', dirigente:'Edson Ornaghi'},
-    {id:'afs', dia:5, turno:'afastado', grupo:'Todos os grupos', local:'Salão do Reino', dirigente:'Todos os grupos'}
+    {id:'afs', dia:5, turno:'rural', grupo:'Todos os grupos', local:'Salão do Reino', dirigente:'Todos os grupos'}
   ].map(v => Object.assign(v, {terr:null, pego:false, por:'', desde:hojeISO()}));
   // Começa sem nenhum histórico: o registro é preenchido a partir das conclusões feitas no sistema.
   const historico = [];
-  S = {v:5, territorios, vagas, historico, senha:SENHA_PADRAO, escala:escalaInicial()};
+  S = {v:6, territorios, vagas, historico, senha:SENHA_PADRAO, escala:escalaInicial()};
   preencherVazias(); return S;
 }
 
@@ -236,6 +239,13 @@ function migrar(){
   if(S.vagas.some(v => v.id==='afa' || v.id==='afb')){ S.vagas = S.vagas.filter(v => v.id!=='afa' && v.id!=='afb');
     const a = S.vagas.find(v => v.id==='afs'); if(a) a.grupo = 'Todos os grupos'; mudou = true; }
   if(!S.escala){ S.escala = escalaInicial(); mudou = true; }
+  // v6: afastados passam para o sábado; rurais ficam no último sábado e domingo do mês.
+  if((S.v||0) < 6){
+    S.territorios.forEach(t => { if(t.tipo==='afastado' && RURAIS.includes(t.nome)) t.tipo = 'rural'; });
+    S.vagas.forEach(v => { const novo = v.id==='sab' ? 'afastado' : v.id==='afs' ? 'rural' : v.turno;
+      if(novo !== v.turno){ v.turno = novo; if(!v.pego) v.terr = null; } });
+    S.v = 6; preencherVazias(); mudou = true;
+  }
   return mudou;
 }
 let S = null, versao = 0, fila = Promise.resolve(), pendentes = 0;
@@ -311,7 +321,7 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&am
 function linkOk(u){ return /^https?:\/\//i.test(u||''); }
 const terr = id => S.territorios.find(t => t.id===id);
 const vaga = id => S.vagas.find(v => v.id===id);
-function nomeVaga(v){ return v.turno==='afastado' ? 'Último sábado e domingo (afastado)' : DIAS[v.dia] + (v.grupo ? ' – ' + v.grupo : ''); }
+function nomeVaga(v){ return v.turno==='rural' ? 'Último sábado e domingo (rural)' : DIAS[v.dia] + (v.grupo ? ' – ' + v.grupo : ''); }
 
 // Último sábado (dia 5) ou domingo (dia 6) do mês; se já passou, o do mês seguinte.
 function ultimoDoMes(a, m, dia){ const alvo = dia===5 ? 6 : 0, d = new Date(a, m+1, 0); while(d.getDay()!==alvo) d.setDate(d.getDate()-1); return iso(d); }
@@ -322,7 +332,7 @@ function ehUltimoSabado(s){ const p = s.split('-').map(Number); return ultimoDoM
 // Escala de sábado: quem dirige em cada data.
 function proxSabado(){ const d = new Date(); d.setDate(d.getDate() + (6 - d.getDay())); return iso(d); }
 function dirigenteEm(data){ const e = (S.escala||[]).find(x => x.data===data); return e ? e.nome : ''; }
-function dirigenteDe(v){ if(v.dia!==5) return v.dirigente; return dirigenteEm(v.turno==='afastado' ? dataAfastado(5) : proxSabado()) || v.dirigente; }
+function dirigenteDe(v){ if(v.dia!==5) return v.dirigente; return dirigenteEm(v.turno==='rural' ? dataAfastado(5) : proxSabado()) || v.dirigente; }
 function hojeEhAfastado(dia){ return (dia===5 || dia===6) && dataAfastado(dia)===hojeISO(); }
 
 /* ============ REGRAS DO RODÍZIO ============ */
@@ -332,14 +342,16 @@ function ultima(tid, dia){ let d=''; for(const h of S.historico){ if(h.terr===ti
 function diasDoTipo(tipo){ return [...new Set(S.vagas.filter(v => v.turno===tipo).map(v => v.dia))].sort(); }
 // Próximo cartão para uma saída: livre, do mesmo tipo da saída. Prefere quem ainda não fez
 // aquele dia no ciclo; entre eles, quem está há mais tempo sem passar por ali.
-function proximo(v, excluir){
+function proximoDoTipo(v, tipo, excluir){
   const oc = ocupados(), ord = t => S.territorios.indexOf(t);
-  const base = S.territorios.filter(t => t.ativo && t.tipo===v.turno && !oc.has(t.id) && t.id!==excluir);
-  if(v.turno==='afastado'){ base.sort((a,b) => ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b)); return base.length ? base[0].id : null; }
+  const base = S.territorios.filter(t => t.ativo && t.tipo===tipo && !oc.has(t.id) && t.id!==excluir);
+  if(semCiclo(tipo)){ base.sort((a,b) => ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b)); return base.length ? base[0].id : null; }
   const novos = base.filter(t => !t.feitos.includes(v.dia)), c = novos.length ? novos : base;
   c.sort((a,b) => ultima(a.id,v.dia).localeCompare(ultima(b.id,v.dia)) || ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b));
   return c.length ? c[0].id : null;
 }
+// Sábado: a preferência é um afastado; se não houver nenhum solto, entra um cartão da manhã.
+function proximo(v, excluir){ return proximoDoTipo(v, v.turno, excluir) || (v.turno==='afastado' ? proximoDoTipo(v, 'manha', excluir) : null); }
 // O rodízio só SUGERE o cartão de cada saída. Ele fica "livre" até um irmão apertar "Pegar território";
 // só então entra em andamento e a designação vai para o registro, com a data desse dia.
 function preencherVazias(excluir){ for(const v of S.vagas){ if(!v.terr){ v.pego = false; v.por = ''; const p = proximo(v, excluir); if(p){ v.terr = p; v.desde = hojeISO(); } } } }
@@ -348,18 +360,22 @@ function presos(){ return new Set(S.vagas.filter(v => v.terr && v.pego).map(v =>
 // Outros cartões que podem ser pegos no lugar do sugerido: mesmo período (manhã ou tarde), que ninguém pegou,
 // sem conclusão nesta semana e respeitando o rodízio (primeiro os que ainda não passaram por aquele dia).
 function alternativas(v){
-  if(v.turno==='afastado' || !v.terr) return [];
+  if(v.turno==='rural' || !v.terr) return [];
   const pr = presos(), seg = segundaISO(), ord = t => S.territorios.indexOf(t), sug = terr(v.terr);
-  const base = S.territorios.filter(t => t.ativo && t.tipo===v.turno && !pr.has(t.id) && t.id!==v.terr && !S.historico.some(x => x.terr===t.id && x.data>=seg));
+  const solto = t => t.ativo && !pr.has(t.id) && t.id!==v.terr && !S.historico.some(x => x.terr===t.id && x.data>=seg);
+  const porRodizio = (a,b) => ultima(a.id,v.dia).localeCompare(ultima(b.id,v.dia)) || ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b);
+  // Sábado: o sugerido é um afastado; como opção ficam os cartões da manhã (C-04 a C-10 e F-01).
+  if(v.turno==='afastado') return S.territorios.filter(t => t.tipo==='manha' && solto(t)).sort(porRodizio);
+  const base = S.territorios.filter(t => t.tipo===v.turno && solto(t));
   const novos = base.filter(t => !t.feitos.includes(v.dia));
   const c = novos.length ? novos : (sug && !sug.feitos.includes(v.dia) ? [] : base);
-  return c.sort((a,b) => ultima(a.id,v.dia).localeCompare(ultima(b.id,v.dia)) || ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b));
+  return c.sort(porRodizio);
 }
 function concluir(vagaId, nome, data){
   const v = vaga(vagaId), t = terr(v.terr); if(!t) return '';
   S.historico.push({id:'h'+Date.now()+Math.random().toString(36).slice(2,7), terr:t.id, vaga:v.id, dia:v.dia, nome, para:dirigenteDe(v), pegou:v.por || '', desig:v.desde, data, ciclo:t.ciclo, reg:new Date().toISOString()});
   let fechou = false;
-  if(t.tipo!=='afastado'){
+  if(!semCiclo(t.tipo)){
     if(!t.feitos.includes(v.dia)) t.feitos.push(v.dia);
     const dias = diasDoTipo(t.tipo);
     if(dias.length && dias.every(d => t.feitos.includes(d))){ t.feitos = []; t.ciclo++; fechou = true; }
@@ -376,7 +392,7 @@ function desfazer(hid){
   const i = S.historico.findIndex(h => h.id===hid); if(i<0) return;
   const h = S.historico[i]; S.historico.splice(i,1);
   const t = terr(h.terr);
-  if(t && t.tipo!=='afastado'){
+  if(t && !semCiclo(t.tipo)){
     const doCiclo = c => S.historico.filter(x => x.terr===t.id && x.ciclo===c);
     if(h.ciclo>0 && h.ciclo===t.ciclo-1 && doCiclo(t.ciclo).length===0) t.ciclo--;
     t.feitos = [...new Set(doCiclo(t.ciclo).map(x => x.dia))];
@@ -421,15 +437,15 @@ function obsResumo(t){ const n = t.notas||[]; if(!n.length) return '';
     '<small>' + esc(u.nome) + ' · ' + brCurto(u.data) + (n.length>1 ? ' · ' + n.length + ' anotações' : '') + (q ? ' · ' + q + (q>1 ? ' fotos/vídeos' : ' foto/vídeo') : '') + '</small></button>'; }
 
 function cartao(v){
-  const t = terr(v.terr), af = v.turno==='afastado';
+  const t = terr(v.terr), af = v.turno==='rural';
   const hoje = af ? (dataAfastado(5)===hojeISO() || dataAfastado(6)===hojeISO()) : (v.dia===diaHoje() && !hojeEhAfastado(v.dia));
   const espera = !af && v.dia===diaHoje() && hojeEhAfastado(v.dia);
   let h = '<article class="card' + (hoje?' hoje':'') + '"><div class="card-topo"><span class="dia">' + esc(af ? 'Último sábado e domingo do mês' : (v.grupo || DIAS[v.dia])) + '</span>' +
     (hoje ? '<span class="pill">Hoje</span>' : '<span class="pill suave">' + (af ? datasAfastado() : v.turno==='tarde' ? 'Tarde' : 'Manhã') + '</span>') + '</div>';
-  if(espera) h += '<div class="nota">Hoje é dia de território afastado. Este cartão fica em espera.</div>';
+  if(espera) h += '<div class="nota">Hoje é dia de território rural. Este cartão fica em espera.</div>';
   h += '<div class="saida">' + (af ? 'Grupos: <b>' + esc(v.grupo) + '</b><br>' : '') + 'Saída: <b>' + esc(v.local) + '</b><br>' + (v.dia===5 ? 'Dirigente de ' + brCurto(af ? dataAfastado(5) : proxSabado()) : 'Dirigente') + ': <b>' + esc(dirigenteDe(v)) + '</b></div>';
   if(t){
-    h += '<div class="terr">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : '<div class="status livre">Livre: sugerido pelo rodízio</div>') + '<div class="meta">' + (t.tipo==='afastado' ? '<span class="pill esp">Afastado</span>' : '') +
+    h += '<div class="terr">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : '<div class="status livre">Livre: sugerido pelo rodízio</div>') + '<div class="meta">' + (semCiclo(t.tipo) ? '<span class="pill esp">' + TIPOS[t.tipo] + '</span>' : '') +
       (v.pego ? '<span>desde ' + brCurto(v.desde) + (v.por ? ' · ' + esc(v.por) : '') + '</span>' : '') + '</div>' + obsResumo(t) + '<div class="acoes">' +
       (linkOk(t.link) ? '<a class="btn" href="' + esc(t.link) + '" target="_blank" rel="noopener">Abrir cartão</a>' : '') +
       '<button class="btn" data-acao="obs" data-id="' + t.id + '">' + ((t.notas||[]).length ? 'Anotações (' + t.notas.length + ')' : 'Onde parou') + '</button>' +
@@ -440,12 +456,12 @@ function cartao(v){
   return h + '</div></article>';
 }
 function telaSemana(){
-  const normais = S.vagas.filter(v => v.turno!=='afastado');
+  const normais = S.vagas.filter(v => v.turno!=='rural');
   return ''+
     '<h2>Segunda a sábado (toda semana)</h2><div class="grade">' + normais.filter(v => v.dia<6).map(cartao).join('') + '</div>' +
     '<h2>Domingo, por grupo (toda semana)</h2><div class="grade">' + normais.filter(v => v.dia===6).map(cartao).join('') + '</div>' +
-    '<h2>Afastado: só em ' + datasAfastado() + '</h2><p class="sub">Uma vez por mês, no último sábado e no último domingo, todos os grupos saem juntos para o mesmo território afastado, nos dois dias. Nos outros fins de semana valem os cartões de sábado e de domingo acima.</p><div class="grade">' +
-    S.vagas.filter(v => v.turno==='afastado').map(cartao).join('') + '</div>' + telaEscala();
+    '<h2>Rural: só em ' + datasAfastado() + '</h2><p class="sub">Uma vez por mês, no último sábado e no último domingo, todos os grupos saem juntos para o mesmo território rural, nos dois dias. Nos outros fins de semana valem os cartões de sábado e de domingo acima.</p><div class="grade">' +
+    S.vagas.filter(v => v.turno==='rural').map(cartao).join('') + '</div>' + telaEscala();
 }
 function telaEscala(){
   const hoje = hojeISO(), prox = proxSabado();
@@ -454,7 +470,7 @@ function telaEscala(){
   if(admin) h += '<div class="acoes" style="margin-bottom:10px"><button class="btn mini" data-acao="escala" data-id="">Adicionar sábado</button></div>';
   if(!lista.length) return h + '<div class="vaziotxt">Nenhum sábado futuro na escala.</div>';
   return h + '<div class="lista">' + lista.map(x => '<div class="linha"><div><b>' + esc(x.nome) + '</b><small>' + br(x.data) + (x.data===prox ? ' · próximo sábado' : '') +
-    (ehUltimoSabado(x.data) ? ' · território afastado' : '') + '</small></div>' + (admin ? '<button class="btn mini" data-acao="escala" data-id="' + x.data + '">Editar</button>' : '') + '</div>').join('') + '</div>';
+    (ehUltimoSabado(x.data) ? ' · território rural' : '') + '</small></div>' + (admin ? '<button class="btn mini" data-acao="escala" data-id="' + x.data + '">Editar</button>' : '') + '</div>').join('') + '</div>';
 }
 function telaControle(){
   const pre = mesRef.a + '-' + String(mesRef.m+1).padStart(2,'0');
@@ -467,14 +483,14 @@ function telaControle(){
     '</strong><span>em andamento agora</span></div><div><strong>' + ativos.filter(t => !doMes.some(x => x.terr===t.id)).length + '</strong><span>sem conclusão no mês</span></div></div>';
   h += '<div class="rolagem"><table><thead><tr><th>Território</th>' + LETRA.map((l,d) => '<th title="' + DIAS[d] + '">' + l + '</th>').join('') + '</tr></thead><tbody>';
   for(const tipo of Object.keys(TIPOS)){
-    const dias = tipo==='afastado' ? [5,6] : diasDoTipo(tipo);
+    const dias = tipo==='rural' ? [5,6] : diasDoTipo(tipo);
     h += '<tr class="grupo"><td colspan="8">' + TIPOS[tipo] + '</td></tr>';
     for(const t of ativos.filter(x => x.tipo===tipo)){
       const ult = ultima(t.id);
-      h += '<tr><td>' + esc(t.nome) + '<small>' + (tipo==='afastado' ? (ult ? 'última: ' + brCurto(ult) : 'ainda não saiu') :
+      h += '<tr><td>' + esc(t.nome) + '<small>' + (semCiclo(tipo) ? (ult ? 'última: ' + brCurto(ult) : 'ainda não saiu') :
         'ciclo ' + t.ciclo + ' · ' + dias.filter(d => t.feitos.includes(d)).length + '/' + dias.length) + '</small></td>';
       for(let d=0; d<7; d++){
-        const feito = doMes.find(x => x.terr===t.id && x.dia===d), andando = S.vagas.some(v => v.pego && v.terr===t.id && (v.dia===d || (v.turno==='afastado' && d>=5)));
+        const feito = doMes.find(x => x.terr===t.id && x.dia===d), andando = S.vagas.some(v => v.pego && v.terr===t.id && (v.dia===d || (v.turno==='rural' && d>=5)));
         let c = dias.includes(d) ? '<span class="cel">·</span>' : '';
         if(feito) c = '<span class="cel mes-ok" title="Concluído em ' + br(feito.data) + ' por ' + esc(feito.nome) + '">' + feito.data.slice(8) + '</span>';
         else if(t.feitos.includes(d)) c = '<span class="cel ciclo-ok" title="Feito em mês anterior, neste ciclo">✓</span>';
@@ -564,7 +580,7 @@ function telaCadastro(){
   const linha = t => '<div class="linha' + (t.ativo?'':' inativo') + '"><div><b>' + esc(t.nome) + '</b><small>' + (linkOk(t.link) ? 'com cartão' : 'sem link') + (t.ativo?'':' · inativo') +
     ((t.notas||[]).length ? ' · ' + t.notas.length + (t.notas.length>1 ? ' anotações' : ' anotação') : '') +
     '</small></div><div style="display:flex;gap:6px;flex:none"><button class="btn mini leve" data-acao="obs" data-id="' + t.id + '">Anotações</button>' + (admin ? '<button class="btn mini" data-acao="editar" data-id="' + t.id + '">Editar</button>' : '') + '</div></div>';
-  const quando = {tarde:'rodam nas saídas da tarde', manha:'rodam nas saídas da manhã, sábado e domingo', afastado:'último sábado e domingo do mês'};
+  const quando = {tarde:'rodam nas saídas da tarde', manha:'rodam nas manhãs de terça, quarta e domingo; no sábado ficam como opção', afastado:'rodam aos sábados, com preferência sobre os cartões da manhã', rural:'só no último sábado e domingo do mês'};
   for(const tipo of Object.keys(TIPOS)){ const l = S.territorios.filter(t => t.tipo===tipo);
     h += '<h2>' + TIPOS[tipo] + ' (' + l.length + ')</h2><p class="sub">' + quando[tipo] + '</p><div class="lista">' + l.map(linha).join('') + '</div>'; }
   h += '<h2>Saídas</h2><div class="lista">' + S.vagas.map(v => '<div class="linha"><div><b>' + esc(nomeVaga(v)) + '</b><small>' + esc(TIPOS[v.turno]) + ' · ' + esc(v.local) + ' · ' + esc(v.dirigente) +
@@ -630,12 +646,12 @@ const janelas = {
       '<div class="campo"><label for="f-link">Link do cartão</label><input id="f-link" type="url" inputmode="url" placeholder="https://drive.google.com/..." value="' + esc(t.link) + '"></div>' +
       '<div class="campo"><label for="f-ativo">Situação</label><select id="f-ativo">' + opcoes({1:'Ativo', 0:'Inativo (fora do rodízio)'}, t.ativo?'1':'0') + '</select></div>' + botoes('Salvar') + '</form>'); },
   novo(){ janelas.editar(''); },
-  saida(id){ const v = vaga(id), af = v.turno==='afastado';
+  saida(id){ const v = vaga(id), af = v.turno==='rural';
     abrir('<form data-form="saida" data-id="' + id + '"><h3>' + esc(nomeVaga(v)) + '</h3><p>Local de saída, dirigente' + (af ? ' e grupos.' : ' e período.') + '</p>' +
       '<div class="campo"><label for="f-local">Local de saída</label><input id="f-local" value="' + esc(v.local) + '"></div>' +
       '<div class="campo"><label for="f-dir">Dirigente</label><input id="f-dir" value="' + esc(v.dirigente) + '"></div>' +
       (af ? '<div class="campo"><label for="f-grupo">Grupos que saem juntos</label><input id="f-grupo" value="' + esc(v.grupo) + '"></div>'
-          : '<div class="campo"><label for="f-turno">Período (define o tipo de cartão)</label><select id="f-turno">' + opcoes({manha:'Manhã', tarde:'Tarde'}, v.turno) + '</select></div>') + botoes('Salvar') + '</form>'); },
+          : v.turno==='afastado' ? '' : '<div class="campo"><label for="f-turno">Período (define o tipo de cartão)</label><select id="f-turno">' + opcoes({manha:'Manhã', tarde:'Tarde'}, v.turno) + '</select></div>') + botoes('Salvar') + '</form>'); },
   senha(){ abrir('<form data-form="senha"><h3>Trocar senha</h3><p>Senha da administração.</p><div class="campo"><label for="f-nova">Nova senha</label><input id="f-nova" autocomplete="off"></div>' + botoes('Salvar') + '</form>'); },
   desfazer(id){ const h = S.historico.find(x => x.id===id), t = terr(h.terr);
     abrir('<form data-form="desfazer" data-id="' + id + '"><h3>Desfazer conclusão?</h3><p>' + esc(t ? t.nome : '') + ', ' + br(h.data) + ', por ' + esc(h.nome) + '. O cartão volta para a saída em que estava.</p>' + botoes('Desfazer', 'perigo') + '</form>'); },
@@ -683,7 +699,7 @@ const envios = {
     if(!t.ativo) S.vagas.forEach(v => { if(v.terr===t.id) v.terr = null; });
     preencherVazias(); salvar(); fechar(); desenhar(); },
   saida(id){ const v = vaga(id); v.local = val('f-local'); v.dirigente = val('f-dir');
-    if(v.turno==='afastado') v.grupo = val('f-grupo') || v.grupo; else v.turno = val('f-turno') || v.turno;
+    if(v.turno==='rural') v.grupo = val('f-grupo') || v.grupo; else if(v.turno!=='afastado') v.turno = val('f-turno') || v.turno;
     salvar(); fechar(); desenhar(); },
   senha(){ const n = val('f-nova'); if(n.length < 8) return erro('Use pelo menos 8 caracteres.'); S.senha = sha256(n); salvar(); fechar(); toast('Senha alterada.'); },
   desfazer(id){ desfazer(id); fechar(); desenhar(); toast('Conclusão desfeita.'); },
