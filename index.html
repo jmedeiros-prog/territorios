@@ -73,6 +73,9 @@ tr.grupo td{background:var(--accent-soft);color:var(--accent);text-align:left;fo
 .terr{font-family:var(--display);font-size:21px;font-weight:700;color:var(--accent);line-height:1.15;overflow-wrap:anywhere}
 .terr.vazio{color:var(--muted);font-size:17px}
 .status.livre{color:var(--warn);background:var(--warn-soft)}
+.status.alerta{color:#fff;background:var(--danger)}
+.alerta-mes{font-size:13.5px;font-weight:600;color:var(--danger);border:1.5px solid var(--danger);border-radius:10px;padding:8px 11px;line-height:1.4}
+.btn.atencao{border-color:var(--danger);color:var(--danger)}
 .status{align-self:flex-start;font-size:13px;font-weight:700;color:var(--ok);background:var(--ok-soft);border-radius:999px;padding:4px 12px}
 .meta{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .meta:empty{display:none}
@@ -499,6 +502,15 @@ function obsResumo(t){ const n = t.notas||[]; if(!n.length) return '';
   return '<button class="obs" data-acao="obs" data-id="' + t.id + '"><b>' + 'Onde parou' + '</b>' + esc(txt.length>110 ? txt.slice(0,110) + '…' : txt) +
     '<small>' + esc(u.nome) + ' · ' + brCurto(u.data) + (n.length>1 ? ' · ' + n.length + ' anotações' : '') + (q ? ' · ' + q + (q>1 ? ' fotos/vídeos' : ' foto/vídeo') : '') + '</small></button>'; }
 
+// Alerta: o território já foi concluído neste mesmo mês, no mesmo dia da semana desta saída.
+// Acontece quando não sobra outro cartão livre e o rodízio devolve o mesmo. Não vale para o rural (é mensal).
+function jaFeitoNoMes(v, t){ if(!v || !t || v.turno==='rural') return null;
+  const mes = proxData(v.dia).slice(0,7);
+  const r = S.historico.filter(h => h.terr===t.id && h.data && h.data.slice(0,7)===mes && diaDe(h)===v.dia);
+  return r.length ? r[r.length-1] : null; }
+function diaDe(h){ if(typeof h.dia==='number') return h.dia; const d = new Date(h.data+'T12:00:00'); return (d.getDay()+6)%7; }
+function textoAlerta(v, r){ return 'Atenção: este território já foi trabalhado neste mês numa ' + DIAS[v.dia].toLowerCase() + (v.dia<5 ? '-feira' : '') +
+  ' (concluído em ' + brCurto(r.data) + (r.nome ? ' por ' + esc(r.nome) : '') + '). Verifique com o servo de território antes de pegar.'; }
 function cartao(v){
   const t = terr(v.terr), af = v.turno==='rural';
   const hoje = af ? (dataAfastado(5)===hojeISO() || dataAfastado(6)===hojeISO()) : (v.dia===diaHoje() && !hojeEhAfastado(v.dia));
@@ -508,7 +520,8 @@ function cartao(v){
   if(espera) h += '<div class="nota">Hoje é dia de território rural. Este cartão fica em espera.</div>';
   h += '<div class="saida">' + (af ? 'Grupos: <b>' + esc(v.grupo) + '</b><br>' : '') + 'Saída: <b>' + esc(v.local) + '</b><br>' + (v.dia===5 ? 'Dirigente de ' + brCurto(af ? dataAfastado(5) : proxSabado()) : 'Dirigente') + ': <b>' + esc(dirigenteDe(v)) + '</b></div>';
   if(t){
-    h += '<div class="terr">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : '<div class="status livre">' + (camp() ? 'Livre: próximo da campanha' : 'Livre: sugerido pelo rodízio') + '</div>') + '<div class="meta">' + (semCiclo(t.tipo) ? '<span class="pill esp">' + TIPOS[t.tipo] + '</span>' : '') +
+    const rep = v.pego ? null : jaFeitoNoMes(v, t);
+    h += '<div class="terr' + (rep ? '" style="color:var(--danger)' : '') + '">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : (rep ? '<div class="status alerta">Já trabalhado neste mês</div><div class="alerta-mes">' + textoAlerta(v, rep) + '</div>' : '<div class="status livre">' + (camp() ? 'Livre: próximo da campanha' : 'Livre: sugerido pelo rodízio') + '</div>')) + '<div class="meta">' + (semCiclo(t.tipo) ? '<span class="pill esp">' + TIPOS[t.tipo] + '</span>' : '') +
       (v.pego ? '<span>desde ' + brCurto(v.desde) + (v.por ? ' · ' + esc(v.por) : '') + '</span>' : '') + '</div>' + obsResumo(t) + '<div class="acoes">' +
       (linkOk(t.link) ? '<a class="btn" href="' + esc(t.link) + '" target="_blank" rel="noopener">Abrir cartão</a>' : '') +
       (linkOk(t.video) ? '<a class="btn" href="' + esc(t.video) + '" target="_blank" rel="noopener">▶ Vídeo do território</a>' : '') +
@@ -762,11 +775,12 @@ const janelas = {
   pegar(arg){ const p = String(arg).split('|'), id = p[0], v = vaga(id), sug = terr(v.terr), t = (p[1] && terr(p[1])) || sug;
     abrir('<form data-form="pegar" data-id="' + id + '"><h3>Pegar território</h3><p>' + esc(nomeVaga(v)) + '. Ao confirmar, o território fica em andamento e a designação entra no registro com a data de hoje.</p>' +
       '<div class="campo"><label>Território</label><div class="terr">' + esc(t.nome) + '</div>' + (t!==sug ? '<small style="color:var(--muted)">Escolhido no lugar do sugerido pelo rodízio (' + esc(sug.nome) + ').</small>' : '') +
+      (jaFeitoNoMes(v, t) ? '<div class="alerta-mes" style="margin-top:8px">' + textoAlerta(v, jaFeitoNoMes(v, t)) + '</div>' : '') +
       '<input type="hidden" id="f-pterr" value="' + t.id + '"></div>' +
       '<div class="campo"><label for="f-pnome">Seu nome</label><input id="f-pnome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' + botoes('Confirmar') + '</form>', true); },
   outros(id){ const v = vaga(id), alt = alternativas(v), sug = terr(v.terr);
     abrir('<h3>Outros territórios livres</h3><p>' + esc(nomeVaga(v)) + '. O rodízio sugere ' + esc(sug.nome) + ', mas estes também podem ser usados neste dia. Toque em um para pegar.</p>' +
-      (alt.length ? '<div class="lista">' + alt.map(a => '<button type="button" class="btn" data-acao="pegar" data-id="' + id + '|' + a.id + '">' + esc(a.nome) + '</button>').join('') + '</div>'
+      (alt.length ? '<div class="lista">' + alt.map(a => '<button type="button" class="btn' + (jaFeitoNoMes(v, a) ? ' atencao" title="Já trabalhado neste mês neste dia da semana' : '') + '" data-acao="pegar" data-id="' + id + '|' + a.id + '">' + (jaFeitoNoMes(v, a) ? '⚠ ' : '') + esc(a.nome) + '</button>').join('') + '</div>'
         : '<div class="vaziotxt">Nenhum outro território livre para este dia agora.</div>') +
       '<div class="acoes" style="margin-top:14px"><button type="button" class="btn leve" data-acao="fechar">Fechar</button></div>', true); },
   adm(){ if(admin){ admin=false; desenhar(); return; }
