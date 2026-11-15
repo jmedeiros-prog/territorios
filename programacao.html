@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Programação da Semana – Congregação Bela Vista</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Página só de leitura: mostra a programação e nada mais. Uma coluna de dias, um cartão por saída. */
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --ink:#1c2738; --muted:#5d6b80; --line:#d5dde8;
+  --accent:#3f67a3; --accent-ink:#ffffff; --accent-soft:#e3ebf7;
+  --ok:#2e7d5b; --ok-soft:#dff1e8; --warn:#9a6412; --warn-soft:#fbf0d9;
+  --display:"Bricolage Grotesque","Trebuchet MS",Arial,sans-serif;
+  --body:"Figtree","Segoe UI",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#121821; --surface:#1b2431; --ink:#e8edf4; --muted:#9aa8bb; --line:#2c3848;
+    --accent:#7ea6e0; --accent-ink:#0f1722; --accent-soft:#22324a;
+    --ok:#6cc79e; --ok-soft:#1c3a2e; --warn:#e0b060; --warn-soft:#3a2f18;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4}
+.topo{background:var(--accent);color:var(--accent-ink);padding:18px 16px 16px}
+.topo div{max-width:720px;margin:auto}
+.topo h1{font-family:var(--display);font-size:24px;margin:0;line-height:1.1;text-wrap:balance}
+.topo p{margin:4px 0 0;font-size:14px;opacity:.85}
+.topo p.hoje{font-weight:700;opacity:1;font-size:15px;margin-top:8px}
+main{max-width:720px;margin:auto;padding:16px 16px 30px}
+h2{font-family:var(--display);font-size:18px;margin:22px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h2:first-child{margin-top:0}
+h2 small{font-family:var(--body);font-size:13px;font-weight:600;color:var(--muted)}
+.sub{margin:-4px 0 10px;font-size:14px;color:var(--muted)}
+.card{background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:13px 14px;margin-bottom:10px}
+.card.hoje{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.linha1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.terr{font-family:var(--display);font-size:21px;font-weight:700;color:var(--accent);line-height:1.15;overflow-wrap:anywhere}
+.terr.vazio{color:var(--muted);font-size:16px}
+.grupo{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:3px}
+.info{font-size:14px;color:var(--muted);margin-top:6px}
+.info b{color:var(--ink);font-weight:600}
+.pill{flex:none;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.pill.cheia{background:var(--accent);color:var(--accent-ink)}
+.pill.esp{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.mapa{display:inline-block;margin-top:10px;font-weight:700;font-size:14px;color:var(--accent);text-decoration:none;border:1.5px solid var(--accent);border-radius:10px;padding:7px 12px}
+.escala{background:var(--surface);border:1.5px solid var(--line);border-radius:16px;overflow:hidden}
+.escala div{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:15px}
+.escala div:last-child{border-bottom:0}
+.escala span{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.vazio-txt{color:var(--muted);font-size:14px;padding:6px 2px}
+footer{text-align:center;font-size:13px;color:var(--muted);padding:0 16px 30px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<header class="topo"><div>
+  <h1>Programação da Semana</h1>
+  <p>Congregação Bela Vista · saídas de campo</p>
+  <p class="hoje" id="hoje"></p>
+</div></header>
+<main id="app"><div class="vazio-txt">Carregando a programação…</div></main>
+<footer><span id="sinc"></span></footer>
+
+<script>
+// Mesmo endereço de dados do sistema de territórios. Esta página só lê; não grava nada.
+const API = 'https://script.google.com/macros/s/AKfycbwFf7FGCqqD0tLS-Uu87QBTE8toIQSTmswOY3L20LdcN_bRSyArLJGpXV-_TF8a3w/exec';
+const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const TIPO = {afastado:'Afastado', rural:'Rural'};
+let S = null, diaMostrado = '';
+
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function hojeISO(){ return iso(new Date()); }
+function diaHoje(){ return (new Date().getDay()+6)%7; }
+function br(s){ const p=s.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function brCurto(s){ const p=s.split('-'); return p[2]+'/'+p[1]; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function linkOk(u){ return /^https?:\/\//i.test(u||''); }
+// Próxima data em que aquele dia da semana cai (hoje conta).
+function proxData(dia){ const d = new Date(); d.setDate(d.getDate() + (dia - diaHoje() + 7) % 7); return iso(d); }
+// Último sábado (5) ou domingo (6) do mês; se já passou, o do mês seguinte.
+function ultimoDoMes(a, m, dia){ const alvo = dia===5 ? 6 : 0, d = new Date(a, m+1, 0); while(d.getDay()!==alvo) d.setDate(d.getDate()-1); return iso(d); }
+function dataRural(dia){ const h = new Date(); let s = ultimoDoMes(h.getFullYear(), h.getMonth(), dia);
+  if(s < hojeISO()){ const n = new Date(h.getFullYear(), h.getMonth()+1, 1); s = ultimoDoMes(n.getFullYear(), n.getMonth(), dia); } return s; }
+const terr = id => (S.territorios||[]).find(t => t.id===id);
+function dirigenteEm(data){ const e = (S.escala||[]).find(x => x.data===data); return e ? e.nome : ''; }
+
+function cartao(v, data, rural){
+  const t = terr(v.terr), hoje = data===hojeISO();
+  const dirigente = (v.dia===5 && dirigenteEm(data)) || v.dirigente;
+  let h = '<div class="card' + (hoje ? ' hoje' : '') + '">';
+  if(rural) h += '<div class="grupo">Todos os grupos juntos</div>';
+  else if(v.grupo) h += '<div class="grupo">' + esc(v.grupo) + '</div>';
+  h += '<div class="linha1"><div class="terr' + (t ? '' : ' vazio') + '">' + esc(t ? t.nome : 'Território a definir') + '</div>' +
+    '<span class="pill">' + (rural ? 'Manhã' : v.turno==='tarde' ? 'Tarde' : 'Manhã') + '</span></div>';
+  h += '<div class="info">Saída: <b>' + esc(v.local || 'a combinar') + '</b><br>Dirigente: <b>' + esc(dirigente || 'a definir') + '</b></div>';
+  if(t){
+    h += '<div class="tags">' + (TIPO[t.tipo] ? '<span class="pill esp">' + TIPO[t.tipo] + '</span>' : '') +
+      (v.pego ? '<span class="pill ok">Em andamento</span>' : '<span class="pill">Previsto</span>') + '</div>';
+    if(linkOk(t.link)) h += '<a class="mapa" href="' + esc(t.link) + '" target="_blank" rel="noopener">Ver cartão do território</a>';
+  }
+  return h + '</div>';
+}
+
+function desenhar(){
+  const d = new Date();
+  document.getElementById('hoje').textContent = 'Hoje é ' + d.toLocaleDateString('pt-BR', {weekday:'long'}) + ', ' + br(hojeISO());
+  diaMostrado = hojeISO();
+  if(!S) return;
+  const rural = (S.vagas||[]).find(v => v.id==='afs'), normais = (S.vagas||[]).filter(v => v.id!=='afs');
+  const dRural = [dataRural(5), dataRural(6)];
+  // Os próximos 7 dias, a partir de hoje.
+  let h = '';
+  for(let i=0; i<7; i++){
+    const dt = new Date(); dt.setDate(dt.getDate() + i); const data = iso(dt), dia = (dt.getDay()+6)%7;
+    const doDia = normais.filter(v => v.dia===dia), ehRural = rural && dRural.includes(data);
+    if(!doDia.length && !ehRural) continue;
+    h += '<h2>' + DIAS[dia] + ', ' + brCurto(data) + (i===0 ? ' <span class="pill cheia">Hoje</span>' : i===1 ? ' <small>amanhã</small>' : '') + '</h2>';
+    if(ehRural) h += '<p class="sub">Fim de semana rural: todos os grupos saem juntos.</p>' + cartao(rural, data, true);
+    else h += doDia.map(v => cartao(v, data, false)).join('');
+  }
+  if(rural){
+    const t = terr(rural.terr), datas = dRural.slice().sort().map(brCurto).join(' e ');
+    h += '<h2>Fim de semana rural <small>' + datas + '</small></h2><p class="sub">No último sábado e domingo do mês, todos os grupos saem juntos para o mesmo território rural.</p>' + cartao(rural, dataRural(5), true);
+  }
+  const esc_ = (S.escala||[]).filter(x => x.data >= hojeISO()).sort((a,b) => a.data.localeCompare(b.data)).slice(0, 8);
+  h += '<h2>Dirigentes de sábado</h2>';
+  h += esc_.length ? '<div class="escala">' + esc_.map(x => '<div><b>' + esc(x.nome) + '</b><span>' + br(x.data) + '</span></div>').join('') + '</div>'
+                   : '<div class="vazio-txt">Escala ainda não cadastrada.</div>';
+  document.getElementById('app').innerHTML = h;
+}
+
+async function buscar(){
+  try{
+    const r = await (await fetch(API)).json();
+    if(r && r.estado){ S = r.estado; desenhar(); }
+    document.getElementById('sinc').textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) + '. A programação pode mudar; confira antes de sair.';
+  }catch(e){
+    document.getElementById('sinc').textContent = 'Sem conexão. Confira a internet e atualize a página.';
+    if(!S) document.getElementById('app').innerHTML = '<div class="vazio-txt">Não consegui carregar a programação. Confira a internet e atualize a página.</div>';
+  }
+}
+desenhar(); buscar();
+setInterval(() => { if(diaMostrado !== hojeISO()) desenhar(); if(!document.hidden) buscar(); }, 60000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) buscar(); });
+</script>
+</body>
+</html>

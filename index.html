@@ -44,8 +44,9 @@ button,input,select{font:inherit;color:inherit}
 .btn-adm{background:transparent;border:1.5px solid currentColor;color:inherit;border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px;cursor:pointer}
 
 nav{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
-.abas{max-width:880px;margin:auto;display:flex;gap:4px;padding:0 12px}
-.abas a{flex:1;text-align:center;padding:13px 4px;text-decoration:none;color:var(--muted);font-weight:600;font-size:15px;border-bottom:3px solid transparent}
+.abas{max-width:880px;margin:auto;display:flex;gap:4px;padding:0 12px;overflow-x:auto;scrollbar-width:none}
+.abas::-webkit-scrollbar{display:none}
+.abas a{flex:1 0 auto;text-align:center;padding:13px 9px;text-decoration:none;color:var(--muted);font-weight:600;font-size:15px;border-bottom:3px solid transparent}
 .abas a[aria-current="page"]{color:var(--accent);border-bottom-color:var(--accent)}
 
 main{max-width:880px;margin:auto;padding:18px 16px 40px}
@@ -167,6 +168,7 @@ footer{text-align:center;font-size:13px;color:var(--muted);padding:0 16px 30px}
     <a href="#controle" data-aba="controle">Mensal</a>
     <a href="#registro" data-aba="registro">Registro</a>
     <a href="#cadastro" data-aba="cadastro">Cartões</a>
+    <a href="#programacao" data-aba="programacao">Programação</a>
   </div>
 </nav>
 
@@ -593,14 +595,26 @@ function telaCadastro(){
 let diaMostrado = '';
 function mostrarHoje(){ const d = new Date(), sem = d.toLocaleDateString('pt-BR', {weekday:'long'});
   document.getElementById('hoje').textContent = 'Hoje é ' + sem + ', ' + br(hojeISO()); diaMostrado = hojeISO(); }
+// Endereço da página só de leitura (programacao.html), que fica na mesma pasta do sistema.
+function linkProgramacao(){ return location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, '') + 'programacao.html'; }
+function telaProgramacao(){
+  const link = linkProgramacao(), txt = 'Programação das saídas de campo da semana – Congregação Bela Vista: ' + link;
+  return '<h2>Programação para compartilhar</h2><p class="sub" style="margin-top:0">Este link abre uma página só de leitura, com a programação da semana, o fim de semana rural e os dirigentes de sábado. ' +
+    'Quem abre não vê os botões do sistema e não consegue alterar nada.</p>' +
+    '<div class="card"><div class="campo" style="margin:0"><label for="f-link">Link da programação</label><input id="f-link" readonly value="' + esc(link) + '"></div>' +
+    '<div class="acoes"><button class="btn cheio" data-acao="copiar-link">Copiar link</button>' +
+    '<a class="btn" href="' + esc(link) + '" target="_blank" rel="noopener">Abrir programação</a>' +
+    '<a class="btn" href="https://wa.me/?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div></div>' +
+    '<p class="sub" style="margin-top:14px">Compartilhe somente este link no grupo. O endereço do sistema fica só com os dirigentes.</p>';
+}
 function desenhar(){
   mostrarHoje();
   if(!S) return;
   const h = (location.hash||'').replace('#','');
-  aba = ['semana','controle','registro','cadastro'].includes(h) ? h : 'semana';
+  aba = ['semana','controle','registro','cadastro','programacao'].includes(h) ? h : 'semana';
   document.querySelectorAll('.abas a').forEach(a => { if(a.dataset.aba===aba) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
   document.getElementById('btn-adm').textContent = admin ? 'Sair da administração' : 'Administração';
-  app.innerHTML = aba==='controle' ? telaControle() : aba==='registro' ? (admin ? telaRegistro() : '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Registro protegido</div><div class="saida">O Registro de Designação de Território só abre com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>') : aba==='cadastro' ? (admin ? telaCadastro() : '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Cartões protegidos</div><div class="saida">O cadastro de cartões e de saídas só abre com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>') : telaSemana();
+  app.innerHTML = aba==='programacao' ? telaProgramacao() : aba==='controle' ? telaControle() : aba==='registro' ? (admin ? telaRegistro() : '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Registro protegido</div><div class="saida">O Registro de Designação de Território só abre com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>') : aba==='cadastro' ? (admin ? telaCadastro() : '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Cartões protegidos</div><div class="saida">O cadastro de cartões e de saídas só abre com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>') : telaSemana();
 }
 
 /* ============ JANELAS ============ */
@@ -733,6 +747,9 @@ document.addEventListener('click', e => {
   if(a==='fechar-fundo'){ if(e.target===el) fechar(); return; }
   if(a==='fechar') return fechar();
   if(a==='mes'){ const d = new Date(mesRef.a, mesRef.m + Number(id), 1); mesRef = {a:d.getFullYear(), m:d.getMonth()}; return desenhar(); }
+  if(a==='copiar-link'){ const campo = document.getElementById('f-link');
+    const feito = () => toast('Link copiado. Agora é só colar no grupo.'), manual = () => { campo.focus(); campo.select(); toast('Segure o dedo sobre o link e escolha Copiar.'); };
+    try{ navigator.clipboard.writeText(campo.value).then(feito, manual); }catch(err){ manual(); } return; }
   if(a==='pdf') return baixarPdf();
   if(a==='zoom'){ el.classList.toggle('grande'); return; }
   if(a==='ano'){ anoServ += Number(id); return desenhar(); }
