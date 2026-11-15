@@ -430,7 +430,8 @@ function cartao(v){
       (v.pego ? '<span>desde ' + brCurto(v.desde) + (v.por ? ' · ' + esc(v.por) : '') + '</span>' : '') + '</div>' + obsResumo(t) + '<div class="acoes">' +
       (linkOk(t.link) ? '<a class="btn" href="' + esc(t.link) + '" target="_blank" rel="noopener">Abrir cartão</a>' : '') +
       '<button class="btn" data-acao="obs" data-id="' + t.id + '">' + ((t.notas||[]).length ? 'Anotações (' + t.notas.length + ')' : 'Onde parou') + '</button>' +
-      (v.pego ? '<button class="btn cheio" data-acao="concluir" data-id="' + v.id + '">Concluir</button>' : '<button class="btn cheio" data-acao="pegar" data-id="' + v.id + '">Pegar território</button>');
+      (v.pego ? '<button class="btn cheio" data-acao="concluir" data-id="' + v.id + '">Concluir</button>' : '<button class="btn cheio" data-acao="pegar" data-id="' + v.id + '">Pegar território</button>' +
+        (alternativas(v).length ? '<button class="btn" data-acao="outros" data-id="' + v.id + '">Outros livres (' + alternativas(v).length + ')</button>' : ''));
   } else h += '<div class="terr vazio">Sem cartão livre para esta saída</div><div class="acoes">';
   if(admin) h += '<button class="btn leve" data-acao="trocar" data-id="' + v.id + '">Trocar</button>';
   return h + '</div></article>';
@@ -593,12 +594,16 @@ const janelas = {
       ((t.notas||[]).some(n => !n.fixa) ? ' As anotações de onde parou são apagadas; as referências fixas continuam.' : '') + '</p>' +
       '<div class="campo"><label for="f-nome">Seu nome</label><input id="f-nome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' +
       '<div class="campo"><label for="f-data">Data de conclusão</label><input id="f-data" type="date" max="' + hojeISO() + '" value="' + hojeISO() + '"></div>' + botoes('Confirmar conclusão') + '</form>'); },
-  pegar(id){ const v = vaga(id), t = terr(v.terr), alt = alternativas(v);
+  pegar(arg){ const p = String(arg).split('|'), id = p[0], v = vaga(id), sug = terr(v.terr), t = (p[1] && terr(p[1])) || sug;
     abrir('<form data-form="pegar" data-id="' + id + '"><h3>Pegar território</h3><p>' + esc(nomeVaga(v)) + '. Ao confirmar, o território fica em andamento e a designação entra no registro com a data de hoje.</p>' +
-      (alt.length ? '<div class="campo"><label for="f-pterr">Território</label><select id="f-pterr"><option value="' + t.id + '">' + esc(t.nome) + ' (sugerido pelo rodízio)</option>' +
-          alt.map(a => '<option value="' + a.id + '">' + esc(a.nome) + ' (livre)</option>').join('') + '</select></div>'
-        : '<div class="campo"><label>Território</label><div class="terr">' + esc(t.nome) + '</div></div>') +
-      '<div class="campo"><label for="f-pnome">Seu nome</label><input id="f-pnome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' + botoes('Confirmar') + '</form>'); },
+      '<div class="campo"><label>Território</label><div class="terr">' + esc(t.nome) + '</div>' + (t!==sug ? '<small style="color:var(--muted)">Escolhido no lugar do sugerido pelo rodízio (' + esc(sug.nome) + ').</small>' : '') +
+      '<input type="hidden" id="f-pterr" value="' + t.id + '"></div>' +
+      '<div class="campo"><label for="f-pnome">Seu nome</label><input id="f-pnome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' + botoes('Confirmar') + '</form>', true); },
+  outros(id){ const v = vaga(id), alt = alternativas(v), sug = terr(v.terr);
+    abrir('<h3>Outros territórios livres</h3><p>' + esc(nomeVaga(v)) + '. O rodízio sugere ' + esc(sug.nome) + ', mas estes também podem ser usados neste dia. Toque em um para pegar.</p>' +
+      (alt.length ? '<div class="lista">' + alt.map(a => '<button type="button" class="btn" data-acao="pegar" data-id="' + id + '|' + a.id + '">' + esc(a.nome) + '</button>').join('') + '</div>'
+        : '<div class="vaziotxt">Nenhum outro território livre para este dia agora.</div>') +
+      '<div class="acoes" style="margin-top:14px"><button type="button" class="btn leve" data-acao="fechar">Fechar</button></div>', true); },
   adm(){ if(admin){ admin=false; desenhar(); return; }
     abrir('<form data-form="adm"><h3>Administração</h3><p>Para ver o Registro, trocar cartões, desfazer conclusões e editar o cadastro.</p>' +
       '<div class="campo"><label for="f-senha">Senha</label><input id="f-senha" type="password" autocomplete="off" autocapitalize="off"></div>' + botoes('Entrar') + '</form>'); },
