@@ -71,6 +71,7 @@ tr.grupo td{background:var(--accent-soft);color:var(--accent);text-align:left;fo
 .saida b{color:var(--ink);font-weight:600}
 .terr{font-family:var(--display);font-size:21px;font-weight:700;color:var(--accent);line-height:1.15;overflow-wrap:anywhere}
 .terr.vazio{color:var(--muted);font-size:17px}
+.status.livre{color:var(--warn);background:var(--warn-soft)}
 .status{align-self:flex-start;font-size:13px;font-weight:700;color:var(--ok);background:var(--ok-soft);border-radius:999px;padding:4px 12px}
 .meta{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pontos{display:inline-flex;gap:3px}
@@ -217,7 +218,7 @@ function dadosIniciais(){
     {id:'dom3', dia:6, turno:'manha', grupo:'Caxambu', local:'Saída do grupo', dirigente:'Takeshi'},
     {id:'dom4', dia:6, turno:'manha', grupo:'Meireles', local:'Saída do grupo', dirigente:'Edson Ornaghi'},
     {id:'afs', dia:5, turno:'afastado', grupo:'Todos os grupos', local:'Salão do Reino', dirigente:'Todos os grupos'}
-  ].map(v => Object.assign(v, {terr:null, desde:hojeISO()}));
+  ].map(v => Object.assign(v, {terr:null, pego:false, por:'', desde:hojeISO()}));
   // Começa sem nenhum histórico: o registro é preenchido a partir das conclusões feitas no sistema.
   const historico = [];
   S = {v:5, territorios, vagas, historico, senha:SENHA_PADRAO, escala:escalaInicial()};
@@ -336,17 +337,31 @@ function proximo(v, excluir){
   c.sort((a,b) => ultima(a.id,v.dia).localeCompare(ultima(b.id,v.dia)) || ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b));
   return c.length ? c[0].id : null;
 }
-function preencherVazias(excluir){ for(const v of S.vagas){ if(!v.terr){ const p = proximo(v, excluir); if(p){ v.terr = p; v.desde = hojeISO(); } } } }
+// O rodízio só SUGERE o cartão de cada saída. Ele fica "livre" até um irmão apertar "Pegar território";
+// só então entra em andamento e a designação vai para o registro, com a data desse dia.
+function preencherVazias(excluir){ for(const v of S.vagas){ if(!v.terr){ v.pego = false; v.por = ''; const p = proximo(v, excluir); if(p){ v.terr = p; v.desde = hojeISO(); } } } }
+function segundaISO(){ const d = new Date(); d.setDate(d.getDate() - (d.getDay()+6)%7); return iso(d); }
+function presos(){ return new Set(S.vagas.filter(v => v.terr && v.pego).map(v => v.terr)); }
+// Outros cartões que podem ser pegos no lugar do sugerido: mesmo período (manhã ou tarde), que ninguém pegou,
+// sem conclusão nesta semana e respeitando o rodízio (primeiro os que ainda não passaram por aquele dia).
+function alternativas(v){
+  if(v.turno==='afastado' || !v.terr) return [];
+  const pr = presos(), seg = segundaISO(), ord = t => S.territorios.indexOf(t), sug = terr(v.terr);
+  const base = S.territorios.filter(t => t.ativo && t.tipo===v.turno && !pr.has(t.id) && t.id!==v.terr && !S.historico.some(x => x.terr===t.id && x.data>=seg));
+  const novos = base.filter(t => !t.feitos.includes(v.dia));
+  const c = novos.length ? novos : (sug && !sug.feitos.includes(v.dia) ? [] : base);
+  return c.sort((a,b) => ultima(a.id,v.dia).localeCompare(ultima(b.id,v.dia)) || ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b));
+}
 function concluir(vagaId, nome, data){
   const v = vaga(vagaId), t = terr(v.terr); if(!t) return '';
-  S.historico.push({id:'h'+Date.now()+Math.random().toString(36).slice(2,7), terr:t.id, vaga:v.id, dia:v.dia, nome, para:dirigenteDe(v), desig:v.desde, data, ciclo:t.ciclo, reg:new Date().toISOString()});
+  S.historico.push({id:'h'+Date.now()+Math.random().toString(36).slice(2,7), terr:t.id, vaga:v.id, dia:v.dia, nome, para:dirigenteDe(v), pegou:v.por || '', desig:v.desde, data, ciclo:t.ciclo, reg:new Date().toISOString()});
   let fechou = false;
   if(t.tipo!=='afastado'){
     if(!t.feitos.includes(v.dia)) t.feitos.push(v.dia);
     const dias = diasDoTipo(t.tipo);
     if(dias.length && dias.every(d => t.feitos.includes(d))){ t.feitos = []; t.ciclo++; fechou = true; }
   }
-  v.terr = null;
+  v.terr = null; v.pego = false; v.por = '';
   limparNotas(t);
   const p = proximo(v, t.id);
   if(p){ v.terr = p; v.desde = data; }
@@ -364,7 +379,7 @@ function desfazer(hid){
     t.feitos = [...new Set(doCiclo(t.ciclo).map(x => x.dia))];
   }
   const v = vaga(h.vaga);
-  if(t && v && !ocupados().has(t.id)){ v.terr = t.id; v.desde = hojeISO(); }
+  if(t && v && !v.pego && !ocupados().has(t.id)){ v.terr = t.id; v.pego = true; v.por = h.pegou || ''; v.desde = h.desig || hojeISO(); }
   salvar();
 }
 
@@ -411,11 +426,11 @@ function cartao(v){
   if(espera) h += '<div class="nota">Hoje é dia de território afastado. Este cartão fica em espera.</div>';
   h += '<div class="saida">' + (af ? 'Grupos: <b>' + esc(v.grupo) + '</b><br>' : '') + 'Saída: <b>' + esc(v.local) + '</b><br>' + (v.dia===5 ? 'Dirigente de ' + brCurto(af ? dataAfastado(5) : proxSabado()) : 'Dirigente') + ': <b>' + esc(dirigenteDe(v)) + '</b></div>';
   if(t){
-    h += '<div class="terr">' + esc(t.nome) + '</div><div class="status">Status: em andamento</div><div class="meta">' + (t.tipo==='afastado' ? '<span class="pill esp">Afastado</span>' : pontos(t, v.dia)) +
-      '<span>desde ' + brCurto(v.desde) + '</span></div>' + obsResumo(t) + '<div class="acoes">' +
+    h += '<div class="terr">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : '<div class="status livre">Livre: sugerido pelo rodízio</div>') + '<div class="meta">' + (t.tipo==='afastado' ? '<span class="pill esp">Afastado</span>' : pontos(t, v.dia)) +
+      (v.pego ? '<span>desde ' + brCurto(v.desde) + (v.por ? ' · ' + esc(v.por) : '') + '</span>' : '') + '</div>' + obsResumo(t) + '<div class="acoes">' +
       (linkOk(t.link) ? '<a class="btn" href="' + esc(t.link) + '" target="_blank" rel="noopener">Abrir cartão</a>' : '') +
       '<button class="btn" data-acao="obs" data-id="' + t.id + '">' + ((t.notas||[]).length ? 'Anotações (' + t.notas.length + ')' : 'Onde parou') + '</button>' +
-      '<button class="btn cheio" data-acao="concluir" data-id="' + v.id + '">Concluir</button>';
+      (v.pego ? '<button class="btn cheio" data-acao="concluir" data-id="' + v.id + '">Concluir</button>' : '<button class="btn cheio" data-acao="pegar" data-id="' + v.id + '">Pegar território</button>');
   } else h += '<div class="terr vazio">Sem cartão livre para esta saída</div><div class="acoes">';
   if(admin) h += '<button class="btn leve" data-acao="trocar" data-id="' + v.id + '">Trocar</button>';
   return h + '</div></article>';
@@ -444,7 +459,7 @@ function telaControle(){
   const nomeMes = new Date(mesRef.a, mesRef.m, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
   let h = '<div class="mes"><button class="btn mini leve" data-acao="mes" data-id="-1" aria-label="Mês anterior">◀</button><strong>' + esc(nomeMes) +
     '</strong><button class="btn mini leve" data-acao="mes" data-id="1" aria-label="Próximo mês">▶</button></div>';
-  h += '<div class="resumo"><div><strong>' + doMes.length + '</strong><span>conclusões no mês</span></div><div><strong>' + ocupados().size +
+  h += '<div class="resumo"><div><strong>' + doMes.length + '</strong><span>conclusões no mês</span></div><div><strong>' + presos().size +
     '</strong><span>em andamento agora</span></div><div><strong>' + ativos.filter(t => !doMes.some(x => x.terr===t.id)).length + '</strong><span>sem conclusão no mês</span></div></div>';
   h += '<div class="rolagem"><table><thead><tr><th>Território</th>' + LETRA.map((l,d) => '<th title="' + DIAS[d] + '">' + l + '</th>').join('') + '</tr></thead><tbody>';
   for(const tipo of Object.keys(TIPOS)){
@@ -455,7 +470,7 @@ function telaControle(){
       h += '<tr><td>' + esc(t.nome) + '<small>' + (tipo==='afastado' ? (ult ? 'última: ' + brCurto(ult) : 'ainda não saiu') :
         'ciclo ' + t.ciclo + ' · ' + dias.filter(d => t.feitos.includes(d)).length + '/' + dias.length) + '</small></td>';
       for(let d=0; d<7; d++){
-        const feito = doMes.find(x => x.terr===t.id && x.dia===d), andando = S.vagas.some(v => v.terr===t.id && (v.dia===d || (v.turno==='afastado' && d>=5)));
+        const feito = doMes.find(x => x.terr===t.id && x.dia===d), andando = S.vagas.some(v => v.pego && v.terr===t.id && (v.dia===d || (v.turno==='afastado' && d>=5)));
         let c = dias.includes(d) ? '<span class="cel">·</span>' : '';
         if(feito) c = '<span class="cel mes-ok" title="Concluído em ' + br(feito.data) + ' por ' + esc(feito.nome) + '">' + feito.data.slice(8) + '</span>';
         else if(t.feitos.includes(d)) c = '<span class="cel ciclo-ok" title="Feito em mês anterior, neste ciclo">✓</span>';
@@ -487,7 +502,7 @@ function telaRegistro(){
     for(const t of S.territorios.filter(x => x.ativo && x.tipo===tipo)){
       const regs = S.historico.filter(x => x.terr===t.id && x.data>=ini && x.data<=fim).map(x => ({para:x.para || x.nome, desig:x.desig || '', concl:x.data}))
         .sort((a,b) => (a.desig||a.concl).localeCompare(b.desig||b.concl));
-      const v = S.vagas.find(x => x.terr===t.id);
+      const v = S.vagas.find(x => x.terr===t.id && x.pego);
       if(v && v.desde>=ini && v.desde<=fim) regs.push({para:dirigenteDe(v), desig:v.desde, concl:''});
       let antes = ''; for(const x of S.historico){ if(x.terr===t.id && x.data<ini && x.data>antes) antes = x.data; }
       for(let i=0; i<Math.max(1, Math.ceil(regs.length/4)); i++){
@@ -508,7 +523,7 @@ async function baixarPdf(){
   for(const t of S.territorios.filter(x => x.ativo)){
     const regs = S.historico.filter(x => x.terr===t.id && x.data>=ini && x.data<=fim).map(x => ({para:x.para || x.nome, desig:x.desig || '', concl:x.data}))
       .sort((a,b) => (a.desig||a.concl).localeCompare(b.desig||b.concl));
-    const v = S.vagas.find(x => x.terr===t.id);
+    const v = S.vagas.find(x => x.terr===t.id && x.pego);
     if(v && v.desde>=ini && v.desde<=fim) regs.push({para:dirigenteDe(v), desig:v.desde, concl:''});
     let antes = ''; for(const x of S.historico){ if(x.terr===t.id && x.data<ini && x.data>antes) antes = x.data; }
     for(let i=0; i<Math.max(1, Math.ceil(regs.length/4)); i++){
@@ -578,13 +593,19 @@ const janelas = {
       ((t.notas||[]).some(n => !n.fixa) ? ' As anotações de onde parou são apagadas; as referências fixas continuam.' : '') + '</p>' +
       '<div class="campo"><label for="f-nome">Seu nome</label><input id="f-nome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' +
       '<div class="campo"><label for="f-data">Data de conclusão</label><input id="f-data" type="date" max="' + hojeISO() + '" value="' + hojeISO() + '"></div>' + botoes('Confirmar conclusão') + '</form>'); },
+  pegar(id){ const v = vaga(id), t = terr(v.terr), alt = alternativas(v);
+    abrir('<form data-form="pegar" data-id="' + id + '"><h3>Pegar território</h3><p>' + esc(nomeVaga(v)) + '. Ao confirmar, o território fica em andamento e a designação entra no registro com a data de hoje.</p>' +
+      (alt.length ? '<div class="campo"><label for="f-pterr">Território</label><select id="f-pterr"><option value="' + t.id + '">' + esc(t.nome) + ' (sugerido pelo rodízio)</option>' +
+          alt.map(a => '<option value="' + a.id + '">' + esc(a.nome) + ' (livre)</option>').join('') + '</select></div>'
+        : '<div class="campo"><label>Território</label><div class="terr">' + esc(t.nome) + '</div></div>') +
+      '<div class="campo"><label for="f-pnome">Seu nome</label><input id="f-pnome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' + botoes('Confirmar') + '</form>'); },
   adm(){ if(admin){ admin=false; desenhar(); return; }
     abrir('<form data-form="adm"><h3>Administração</h3><p>Para ver o Registro, trocar cartões, desfazer conclusões e editar o cadastro.</p>' +
       '<div class="campo"><label for="f-senha">Senha</label><input id="f-senha" type="password" autocomplete="off" autocapitalize="off"></div>' + botoes('Entrar') + '</form>'); },
   trocar(id){ const v = vaga(id), oc = ocupados(), livres = S.territorios.filter(t => t.ativo && !oc.has(t.id)), sug = proximo(v);
     const op = t => '<option value="' + t.id + '">' + esc(t.nome) + (t.id===sug ? ' (sugerido)' : '') + '</option>';
     const g = (rot, arr) => arr.length ? '<optgroup label="' + rot + '">' + arr.map(op).join('') + '</optgroup>' : '';
-    abrir('<form data-form="trocar" data-id="' + id + '"><h3>Trocar cartão</h3><p>' + esc(nomeVaga(v)) + '. O cartão atual volta para a fila sem contar como concluído.</p>' +
+    abrir('<form data-form="trocar" data-id="' + id + '"><h3>Trocar cartão</h3><p>' + esc(nomeVaga(v)) + '. O cartão atual volta para a fila sem contar como concluído, e o novo fica livre até alguém pegar.</p>' +
       '<div class="campo"><label for="f-terr">Cartão</label><select id="f-terr">' +
       g(TIPOS[v.turno], livres.filter(t => t.tipo===v.turno).sort((a,b) => (b.id===sug)-(a.id===sug))) +
       Object.keys(TIPOS).filter(k => k!==v.turno).map(k => g(TIPOS[k], livres.filter(t => t.tipo===k))).join('') +
@@ -635,8 +656,15 @@ const envios = {
   concluir(id){ const nome = val('f-nome'), data = val('f-data');
     if(!nome) return erro('Informe seu nome.'); if(!data) return erro('Informe a data de conclusão.'); if(data > hojeISO()) return erro('A data não pode ser futura.');
     ultimoNome = nome; const msg = concluir(id, nome, data); fechar(); desenhar(); toast(msg); },
+  pegar(id){ const v = vaga(id), nome = val('f-pnome'); if(!v || !v.terr || v.pego){ fechar(); return desenhar(); }
+    if(!nome) return erro('Informe seu nome.');
+    const tid = val('f-pterr') || v.terr;
+    if(tid !== v.terr && !alternativas(v).some(a => a.id===tid)) return erro('Esse território não está mais livre. Feche e abra de novo.');
+    if(tid !== v.terr){ S.vagas.forEach(w => { if(w!==v && w.terr===tid && !w.pego) w.terr = null; }); v.terr = tid; }
+    v.pego = true; v.por = nome; v.desde = hojeISO(); ultimoNome = nome; preencherVazias(); salvar(); fechar(); desenhar();
+    toast(terr(tid).nome + ' em andamento: ' + nomeVaga(v) + '.'); },
   adm(){ if(sha256(val('f-senha')) !== S.senha) return erro('Senha incorreta.'); admin = true; fechar(); desenhar(); },
-  trocar(id){ const v = vaga(id); v.terr = val('f-terr') || null; v.desde = hojeISO(); salvar(); fechar(); desenhar(); },
+  trocar(id){ const v = vaga(id); v.terr = val('f-terr') || null; v.pego = false; v.por = ''; v.desde = hojeISO(); salvar(); fechar(); desenhar(); },
   editar(id){ const nome = val('f-tnome'), link = val('f-link'); if(!nome) return erro('Informe o nome.'); if(link && !linkOk(link)) return erro('O link precisa começar com https://');
     let t = terr(id); if(!t){ t = {id:'n'+Date.now(), feitos:[], ciclo:1, notas:[]}; S.territorios.push(t); }
     Object.assign(t, {nome, link, tipo:val('f-tipo'), ativo:val('f-ativo')==='1'});
