@@ -558,7 +558,7 @@ function desenhar(){
   aba = ['semana','controle','registro','cadastro'].includes(h) ? h : 'semana';
   document.querySelectorAll('.abas a').forEach(a => { if(a.dataset.aba===aba) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
   document.getElementById('btn-adm').textContent = admin ? 'Sair da administração' : 'Administração';
-  app.innerHTML = aba==='controle' ? telaControle() : aba==='registro' ? (admin ? telaRegistro() : '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Registro protegido</div><div class="saida">O Registro de Designação de Território só abre com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>') : aba==='cadastro' ? telaCadastro() : telaSemana();
+  app.innerHTML = aba==='controle' ? telaControle() : aba==='registro' ? (admin ? telaRegistro() : '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Registro protegido</div><div class="saida">O Registro de Designação de Território só abre com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>') : aba==='cadastro' ? (admin ? telaCadastro() : '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Cartões protegidos</div><div class="saida">O cadastro de cartões e de saídas só abre com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>') : telaSemana();
 }
 
 /* ============ JANELAS ============ */
