@@ -32,6 +32,11 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16p
 .topo h1{font-family:var(--display);font-size:24px;margin:0;line-height:1.1;text-wrap:balance}
 .topo p{margin:4px 0 0;font-size:14px;opacity:.85}
 .topo p.hoje{font-weight:700;opacity:1;font-size:15px;margin-top:8px}
+.lema{margin-top:10px;overflow:hidden;white-space:nowrap;font-style:italic;font-size:14.5px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+.lema span{display:inline-block;padding-left:100%;animation:passar var(--dur,24s) linear infinite}
+@keyframes passar{to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.lema{white-space:normal;-webkit-mask-image:none;mask-image:none}.lema span{animation:none;padding-left:0}}
+
 main{max-width:720px;margin:auto;padding:16px 16px 30px}
 h2{font-family:var(--display);font-size:18px;margin:22px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 h2:first-child{margin-top:0}
@@ -65,6 +70,7 @@ footer{text-align:center;font-size:13px;color:var(--muted);padding:0 16px 30px}
   <h1>Programação da Semana</h1>
   <p>Congregação Bela Vista · saídas de campo</p>
   <p class="hoje" id="hoje"></p>
+  <div class="lema" id="lema" hidden></div>
 </div></header>
 <main id="app"><div class="vazio-txt">Carregando a programação…</div></main>
 <footer><span id="sinc"></span></footer>
@@ -92,6 +98,13 @@ function dataRural(dia){ const h = new Date(); let s = ultimoDoMes(h.getFullYear
 const terr = id => (S.territorios||[]).find(t => t.id===id);
 function dirigenteEm(data){ const e = (S.escala||[]).find(x => x.data===data); return e ? e.nome : ''; }
 
+// Texto bíblico da semana: a Administração cadastra uma lista e o sistema mostra um por semana, em ordem, passando no topo.
+function semanaN(){ const d = new Date(); d.setDate(d.getDate() - (d.getDay()+6)%7); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 6048e5); }
+function textoDaSemana(){ const l = ((S && S.textos) || []).filter(Boolean); return l.length ? l[semanaN() % l.length] : ''; }
+let lemaAtual = null;
+function mostrarLema(){ const t = textoDaSemana(); if(t===lemaAtual) return; lemaAtual = t;
+  const el = document.getElementById('lema'); el.hidden = !t; el.innerHTML = t ? '<span style="--dur:' + Math.max(14, Math.round(t.length * 0.22)) + 's">' + esc(t) + '</span>' : ''; }
+
 function cartao(v, data, rural){
   const t = terr(v.terr), hoje = data===hojeISO();
   const dirigente = (v.dia===5 && dirigenteEm(data)) || v.dirigente;
@@ -114,6 +127,7 @@ function desenhar(){
   document.getElementById('hoje').textContent = 'Hoje é ' + d.toLocaleDateString('pt-BR', {weekday:'long'}) + ', ' + br(hojeISO());
   diaMostrado = hojeISO();
   if(!S) return;
+  mostrarLema();
   const rural = (S.vagas||[]).find(v => v.id==='afs'), normais = (S.vagas||[]).filter(v => v.id!=='afs');
   const dRural = [dataRural(5), dataRural(6)];
   // Os próximos 7 dias, a partir de hoje.

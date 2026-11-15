@@ -77,6 +77,10 @@ tr.grupo td{background:var(--accent-soft);color:var(--accent);text-align:left;fo
 .meta{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .meta:empty{display:none}
 .topo p.hoje{font-weight:700;opacity:1;font-size:15px;margin-top:8px}
+.lema{max-width:880px;margin:10px auto 0;overflow:hidden;white-space:nowrap;font-style:italic;font-size:14.5px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+.lema span{display:inline-block;padding-left:100%;animation:passar var(--dur,24s) linear infinite}
+@keyframes passar{to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.lema{white-space:normal;-webkit-mask-image:none;mask-image:none}.lema span{animation:none;padding-left:0}}
 .pontos{display:inline-flex;gap:3px}
 .pontos i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--line);display:block}
 .pontos i.f{background:var(--ok);border-color:var(--ok)}
@@ -110,6 +114,9 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .legenda .cel{width:18px;height:18px;border-radius:5px;font-size:10px}
 
 .lista{display:flex;flex-direction:column;gap:8px}
+.subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.subnav a{text-decoration:none;font-weight:700;font-size:14px;color:var(--muted);border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px}
+.subnav a.on{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}
 .linha{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .linha b{display:block;overflow-wrap:anywhere}
 .linha small{color:var(--muted);font-size:13px}
@@ -160,15 +167,15 @@ footer{text-align:center;font-size:13px;color:var(--muted);padding:0 16px 30px}
     </div>
     <button class="btn-adm" id="btn-adm" data-acao="adm">Administração</button>
   </div>
+  <div class="lema" id="lema" hidden></div>
 </header>
 
 <nav>
   <div class="abas">
     <a href="#semana" data-aba="semana">Semana</a>
     <a href="#controle" data-aba="controle">Mensal</a>
-    <a href="#registro" data-aba="registro">Registro</a>
-    <a href="#cadastro" data-aba="cadastro">Cartões</a>
     <a href="#programacao" data-aba="programacao">Programação</a>
+    <a href="#registro" data-aba="adm">Administração</a>
   </div>
 </nav>
 
@@ -346,9 +353,13 @@ function ultima(tid, dia){ let d=''; for(const h of S.historico){ if(h.terr===ti
 function diasDoTipo(tipo){ return [...new Set(S.vagas.filter(v => v.turno===tipo).map(v => v.dia))].sort(); }
 // Próximo cartão para uma saída: livre, do mesmo tipo da saída. Prefere quem ainda não fez
 // aquele dia no ciclo; entre eles, quem está há mais tempo sem passar por ali.
+// Um afastado concluído fica 30 dias fora das sugestões e dos livres. Só volta antes se todos os outros também estiverem descansando.
+function descansando(t){ const u = ultima(t.id); if(!u) return false; const d = new Date(); d.setDate(d.getDate() - 30); return u > iso(d); }
+function afastadosDaVez(lista){ const prontos = lista.filter(t => !descansando(t)); return prontos.length ? prontos : lista; }
 function proximoDoTipo(v, tipo, excluir){
   const oc = ocupados(), ord = t => S.territorios.indexOf(t);
-  const base = S.territorios.filter(t => t.ativo && t.tipo===tipo && !oc.has(t.id) && t.id!==excluir);
+  let base = S.territorios.filter(t => t.ativo && t.tipo===tipo && !oc.has(t.id) && t.id!==excluir);
+  if(tipo==='afastado') base = afastadosDaVez(base);
   if(semCiclo(tipo)){ base.sort((a,b) => ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b)); return base.length ? base[0].id : null; }
   const novos = base.filter(t => !t.feitos.includes(v.dia)), c = novos.length ? novos : base;
   c.sort((a,b) => ultima(a.id,v.dia).localeCompare(ultima(b.id,v.dia)) || ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b));
@@ -368,8 +379,13 @@ function alternativas(v){
   const pr = presos(), seg = segundaISO(), ord = t => S.territorios.indexOf(t), sug = terr(v.terr);
   const solto = t => t.ativo && !pr.has(t.id) && t.id!==v.terr && !S.historico.some(x => x.terr===t.id && x.data>=seg);
   const porRodizio = (a,b) => ultima(a.id,v.dia).localeCompare(ultima(b.id,v.dia)) || ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b);
-  // Sábado: o sugerido é um afastado; como opção ficam os cartões da manhã (C-04 a C-10 e F-01).
-  if(v.turno==='afastado') return S.territorios.filter(t => t.tipo==='manha' && solto(t)).sort(porRodizio);
+  // Sábado: como opção ficam os outros afastados que não estão descansando (30 dias) e, depois, os cartões da manhã.
+  if(v.turno==='afastado'){
+    const todos = S.territorios.filter(t => t.ativo && t.tipo==='afastado' && !pr.has(t.id));
+    const alguemPronto = todos.some(t => !descansando(t));
+    const af = todos.filter(t => t.id!==v.terr && (!alguemPronto || !descansando(t))).sort((a,b) => ultima(a.id).localeCompare(ultima(b.id)) || ord(a)-ord(b));
+    return af.concat(S.territorios.filter(t => t.tipo==='manha' && solto(t)).sort(porRodizio));
+  }
   const base = S.territorios.filter(t => t.tipo===v.turno && solto(t));
   const novos = base.filter(t => !t.feitos.includes(v.dia));
   const c = novos.length ? novos : (sug && !sug.feitos.includes(v.dia) ? [] : base);
@@ -584,7 +600,7 @@ function telaCadastro(){
   const linha = t => '<div class="linha' + (t.ativo?'':' inativo') + '"><div><b>' + esc(t.nome) + '</b><small>' + (linkOk(t.link) ? 'com cartão' : 'sem link') + (t.ativo?'':' · inativo') +
     ((t.notas||[]).length ? ' · ' + t.notas.length + (t.notas.length>1 ? ' anotações' : ' anotação') : '') +
     '</small></div><div style="display:flex;gap:6px;flex:none"><button class="btn mini leve" data-acao="obs" data-id="' + t.id + '">Anotações</button>' + (admin ? '<button class="btn mini" data-acao="editar" data-id="' + t.id + '">Editar</button>' : '') + '</div></div>';
-  const quando = {tarde:'rodam nas saídas da tarde', manha:'rodam nas manhãs de terça, quarta e domingo; no sábado ficam como opção', afastado:'rodam aos sábados, com preferência sobre os cartões da manhã', rural:'só no último sábado e domingo do mês'};
+  const quando = {tarde:'rodam nas saídas da tarde', manha:'rodam nas manhãs de terça, quarta e domingo; no sábado ficam como opção', afastado:'rodam aos sábados; depois de concluído, cada um descansa 30 dias', rural:'só no último sábado e domingo do mês'};
   for(const tipo of Object.keys(TIPOS)){ const l = S.territorios.filter(t => t.tipo===tipo);
     h += '<h2>' + TIPOS[tipo] + ' (' + l.length + ')</h2><p class="sub">' + quando[tipo] + '</p><div class="lista">' + l.map(linha).join('') + '</div>'; }
   h += '<h2>Saídas</h2><div class="lista">' + S.vagas.map(v => '<div class="linha"><div><b>' + esc(nomeVaga(v)) + '</b><small>' + esc(TIPOS[v.turno]) + ' · ' + esc(v.local) + ' · ' + esc(v.dirigente) +
@@ -596,6 +612,42 @@ let diaMostrado = '';
 function mostrarHoje(){ const d = new Date(), sem = d.toLocaleDateString('pt-BR', {weekday:'long'});
   document.getElementById('hoje').textContent = 'Hoje é ' + sem + ', ' + br(hojeISO()); diaMostrado = hojeISO(); }
 // Endereço da página só de leitura (programacao.html), que fica na mesma pasta do sistema.
+const ADM = ['registro', 'cadastro', 'copias', 'textos'];
+// Texto bíblico da semana: a Administração cadastra uma lista e o sistema mostra um por semana, em ordem, passando no topo.
+function semanaN(){ const d = new Date(); d.setDate(d.getDate() - (d.getDay()+6)%7); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 6048e5); }
+function textoDaSemana(){ const l = ((S && S.textos) || []).filter(Boolean); return l.length ? l[semanaN() % l.length] : ''; }
+let lemaAtual = null;
+function mostrarLema(){ const t = textoDaSemana(); if(t===lemaAtual) return; lemaAtual = t;
+  const el = document.getElementById('lema'); el.hidden = !t; el.innerHTML = t ? '<span style="--dur:' + Math.max(14, Math.round(t.length * 0.22)) + 's">' + esc(t) + '</span>' : ''; }
+function telaTextos(){
+  const l = (S.textos||[]), atual = textoDaSemana();
+  return '<h2>Textos bíblicos do topo</h2><p class="sub" style="margin-top:0">Escreva um texto por linha, com a referência no fim. O sistema mostra um por semana, na ordem da lista, e recomeça quando ela acaba. ' +
+    'Ele aparece passando no topo do sistema e da página de programação.</p>' +
+    (atual ? '<div class="nota" style="margin-bottom:12px">Nesta semana: ' + esc(atual) + '</div>' : '') +
+    '<form data-form="textos"><div class="campo"><label for="f-textos">Textos (um por linha)</label><textarea id="f-textos" rows="10" placeholder="Escreva o texto como está na sua Bíblia e termine com a referência. Exemplo de formato: texto do versículo (Mateus 24:14)">' + esc(l.join('\n')) + '</textarea></div>' +
+    '<p class="erro" id="erro"></p><div class="acoes"><button type="submit" class="btn cheio">Salvar textos</button></div></form>';
+}
+/* ============ CÓPIAS DE SEGURANÇA ============ */
+// A planilha guarda uma cópia dos dados todo dia (e sempre que alguém pedir). Aqui dá para ver a lista e restaurar.
+let copias = null, copiasErro = '', copiasBuscando = false;
+async function carregarCopias(){
+  if(copiasBuscando) return; copiasBuscando = true; copiasErro = '';
+  try{ const r = await (await fetch(API + '?acao=copias')).json();
+    if(r && Array.isArray(r.copias)) copias = r.copias;
+    else { copias = []; copiasErro = 'A planilha ainda está com a versão antiga do código. Publique a nova versão no Google para usar as cópias por aqui.'; }
+  }catch(e){ copias = []; copiasErro = 'Não consegui buscar as cópias. Confira a internet.'; }
+  copiasBuscando = false; if(aba==='copias') desenhar();
+}
+function telaCopias(){
+  if(copias===null){ carregarCopias(); return '<h2>Cópias de segurança</h2><div class="vaziotxt">Buscando as cópias…</div>'; }
+  let h = '<h2>Cópias de segurança</h2><p class="sub" style="margin-top:0">A planilha guarda uma cópia de todos os dados todo dia, na hora dos lembretes, e mantém as 20 mais recentes. ' +
+    'Se alguém alterar algo por engano, restaure a cópia de antes do erro.</p>' +
+    '<div class="acoes" style="margin-bottom:14px"><button class="btn cheio" data-acao="copia-agora">Fazer cópia agora</button><button class="btn leve" data-acao="copias-atualizar">Atualizar lista</button></div>';
+  if(copiasErro) return h + '<div class="aviso">' + esc(copiasErro) + '</div>';
+  if(!copias.length) return h + '<div class="vaziotxt">Nenhuma cópia ainda. A primeira é feita hoje, na hora dos lembretes, ou agora pelo botão acima.</div>';
+  return h + '<div class="lista">' + copias.map(c => '<div class="linha"><div><b>' + esc(c.quando) + '</b><small>' + esc(c.motivo) + '</small></div>' +
+    '<button class="btn mini perigo" data-acao="copia-restaurar" data-id="' + esc(c.id) + '">Restaurar</button></div>').join('') + '</div>';
+}
 function linkProgramacao(){ return location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, '') + 'programacao.html'; }
 function telaProgramacao(){
   const link = linkProgramacao(), txt = 'Programação das saídas de campo da semana – Congregação Bela Vista: ' + link;
@@ -608,13 +660,20 @@ function telaProgramacao(){
     '<p class="sub" style="margin-top:14px">Compartilhe somente este link no grupo. O endereço do sistema fica só com os dirigentes.</p>';
 }
 function desenhar(){
-  mostrarHoje();
+  mostrarHoje(); mostrarLema();
   if(!S) return;
   const h = (location.hash||'').replace('#','');
-  aba = ['semana','controle','registro','cadastro','programacao'].includes(h) ? h : 'semana';
-  document.querySelectorAll('.abas a').forEach(a => { if(a.dataset.aba===aba) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+  aba = ['semana','controle','programacao'].concat(ADM).includes(h) ? h : 'semana';
+  const grupo = ADM.includes(aba) ? 'adm' : aba;
+  document.querySelectorAll('.abas a').forEach(a => { if(a.dataset.aba===grupo) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
   document.getElementById('btn-adm').textContent = admin ? 'Sair da administração' : 'Administração';
-  app.innerHTML = aba==='programacao' ? telaProgramacao() : aba==='controle' ? telaControle() : aba==='registro' ? (admin ? telaRegistro() : '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Registro protegido</div><div class="saida">O Registro de Designação de Território só abre com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>') : aba==='cadastro' ? (admin ? telaCadastro() : '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Cartões protegidos</div><div class="saida">O cadastro de cartões e de saídas só abre com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>') : telaSemana();
+  if(grupo==='adm'){
+    if(!admin){ app.innerHTML = '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Área protegida</div><div class="saida">O Registro, os Cartões e as Cópias de segurança só abrem com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>'; return; }
+    const sub = [['registro','Registro'],['cadastro','Cartões'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('');
+    app.innerHTML = '<div class="subnav">' + sub + '</div>' + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : telaCopias());
+    return;
+  }
+  app.innerHTML = aba==='programacao' ? telaProgramacao() : aba==='controle' ? telaControle() : telaSemana();
 }
 
 /* ============ JANELAS ============ */
@@ -692,6 +751,8 @@ const janelas = {
     mostrarMidias(); },
   'obs-apagar'(par){ const p = par.split('|'), t = terr(p[0]), n = t && (t.notas||[]).find(x => x.id===p[1]); if(!n || !admin) return;
     (n.midias||[]).forEach(m => midiaDel(m.id).catch(() => {})); t.notas = t.notas.filter(x => x!==n); salvar(); desenhar(); janelas.obs(p[0]); toast('Anotação apagada.'); },
+  'copia-restaurar'(id){ const c = (copias||[]).find(x => x.id===id); if(!c || !admin) return;
+    abrir('<form data-form="copia-restaurar" data-id="' + esc(id) + '"><h3>Restaurar esta cópia?</h3><p>Os dados de todos voltam a ser os de <b>' + esc(c.quando) + '</b>. O que foi feito depois disso some da tela, mas antes de restaurar o sistema guarda uma cópia de como está agora.</p>' + botoes('Restaurar', 'perigo') + '</form>'); },
   zerar(){ abrir('<form data-form="zerar"><h3>Zerar tudo?</h3><p>Apaga para todos as conclusões registradas pelo sistema, as anotações e as alterações de cadastro, e volta ao cadastro inicial. A senha continua a mesma.</p>' + botoes('Apagar tudo', 'perigo') + '</form>'); }
 };
 const val = id => { const e = document.getElementById(id); return e ? (e.value || '').trim() : ''; };
@@ -735,7 +796,15 @@ const envios = {
     if(!texto && !midias.length){ bt.disabled = false; bt.textContent = 'Salvar anotação'; return erro('Não consegui enviar os arquivos. Confira a internet e tente de novo.'); }
     ultimoNome = nome; const tt = terr(id) || t; (tt.notas = tt.notas || []).push({id:'o' + Date.now(), texto, nome, data:hojeISO(), fixa, midias}); salvar(); fechar(); desenhar();
     toast(falhou ? 'Anotação salva, mas ' + falhou + ' arquivo(s) não puderam ser enviados.' : 'Anotação salva em ' + t.nome + '.'); },
-  zerar(){ const senha = S.senha, escala = S.escala; dadosIniciais(); S.senha = senha; if(escala) S.escala = escala; salvar(); fechar(); desenhar(); toast('Dados zerados.'); }
+  async 'copia-restaurar'(id){ if(!admin) return; const bt = camada.querySelector('button[type=submit]'); bt.disabled = true; bt.textContent = 'Restaurando…';
+    try{ const r = await api({acao:'restaurar', id});
+      if(!r.ok || !r.estado) throw new Error(r.erro || 'erro');
+      S = r.estado; versao = r.versao; migrar(); guardarLocal(); copias = null; fechar(); desenhar(); toast('Cópia restaurada.');
+    }catch(e){ bt.disabled = false; bt.textContent = 'Restaurar'; erro('Não consegui restaurar. Confira a internet e tente de novo.'); } },
+  textos(){ if(!admin) return; const l = val('f-textos').split('\n').map(x => x.trim()).filter(Boolean);
+    if(l.length > 60) return erro('Use no máximo 60 textos.'); if(l.some(x => x.length > 400)) return erro('Algum texto está muito longo. Use até 400 letras por linha.');
+    S.textos = l; salvar(); desenhar(); toast(l.length ? 'Textos salvos.' : 'Lista vazia: nenhum texto aparece no topo.'); },
+  zerar(){ const senha = S.senha, escala = S.escala; const textos = S.textos; dadosIniciais(); S.senha = senha; if(escala) S.escala = escala; if(textos) S.textos = textos; salvar(); fechar(); desenhar(); toast('Dados zerados.'); }
 };
 
 /* ============ EVENTOS ============ */
@@ -749,6 +818,10 @@ document.addEventListener('click', e => {
   if(a==='mes'){ const d = new Date(mesRef.a, mesRef.m + Number(id), 1); mesRef = {a:d.getFullYear(), m:d.getMonth()}; return desenhar(); }
   // O link abre o WhatsApp com a mensagem pronta; por garantia, o endereço também vai para a área de transferência.
   if(a==='zap-link'){ try{ navigator.clipboard.writeText(linkProgramacao()).then(() => toast('Escolha a conversa no WhatsApp. O link também foi copiado.'), () => {}); }catch(err){} return; }
+  if(a==='copias-atualizar'){ copias = null; return desenhar(); }
+  if(a==='copia-agora'){ if(!admin) return; el.disabled = true; el.textContent = 'Copiando…';
+    api({acao:'copiar'}).then(r => { toast(r && r.ok ? 'Cópia feita.' : 'Não consegui fazer a cópia. A planilha pode estar com a versão antiga do código.'); copias = null; desenhar(); },
+      () => { toast('Não consegui fazer a cópia. Confira a internet.'); desenhar(); }); return; }
   if(a==='copiar-link'){ const campo = document.getElementById('f-link');
     const feito = () => toast('Link copiado. Agora é só colar no grupo.'), manual = () => { campo.focus(); campo.select(); toast('Segure o dedo sobre o link e escolha Copiar.'); };
     try{ navigator.clipboard.writeText(campo.value).then(feito, manual); }catch(err){ manual(); } return; }
