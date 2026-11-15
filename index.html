@@ -74,6 +74,8 @@ tr.grupo td{background:var(--accent-soft);color:var(--accent);text-align:left;fo
 .status.livre{color:var(--warn);background:var(--warn-soft)}
 .status{align-self:flex-start;font-size:13px;font-weight:700;color:var(--ok);background:var(--ok-soft);border-radius:999px;padding:4px 12px}
 .meta{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.meta:empty{display:none}
+.topo p.hoje{font-weight:700;opacity:1;font-size:15px;margin-top:8px}
 .pontos{display:inline-flex;gap:3px}
 .pontos i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--line);display:block}
 .pontos i.f{background:var(--ok);border-color:var(--ok)}
@@ -153,6 +155,7 @@ footer{text-align:center;font-size:13px;color:var(--muted);padding:0 16px 30px}
     <div>
       <h1>Territórios da Semana</h1>
       <p>Congregação Bela Vista</p>
+      <p class="hoje" id="hoje"></p>
     </div>
     <button class="btn-adm" id="btn-adm" data-acao="adm">Administração</button>
   </div>
@@ -409,12 +412,12 @@ function reduzir(file){ return new Promise(ok => { const img = new Image(), u = 
 function mostrarMidias(){ for(const el of camada.querySelectorAll('.midia[data-mid]')){ const id = encodeURIComponent(el.dataset.mid), video = el.dataset.tipo==='video';
   el.innerHTML = '<a href="https://drive.google.com/file/d/' + id + '/view" target="_blank" rel="noopener">' + (video ? '▶ Abrir vídeo' : '<img alt="Foto da anotação (toque para abrir)" src="https://drive.google.com/thumbnail?id=' + id + '&sz=w400">') + '</a>';
   const img = el.querySelector('img'); if(img) img.onerror = () => { img.parentNode.textContent = 'Abrir foto'; }; } }
-// Ao concluir, saem as anotações de "onde parou"; as referências fixas continuam no cartão.
-function limparNotas(t){ const sai = (t.notas||[]).filter(n => !n.fixa); t.notas = (t.notas||[]).filter(n => n.fixa);
+// Ao concluir, as anotações do território são apagadas.
+function limparNotas(t){ const sai = t.notas||[]; t.notas = [];
   sai.forEach(n => (n.midias||[]).forEach(m => midiaDel(m.id).catch(() => {}))); }
 function obsResumo(t){ const n = t.notas||[]; if(!n.length) return '';
   const u = n[n.length-1], q = n.reduce((s,x) => s + (x.midias||[]).length, 0), txt = u.texto || '(foto ou vídeo)';
-  return '<button class="obs" data-acao="obs" data-id="' + t.id + '"><b>' + (u.fixa ? 'Referência' : 'Onde parou') + '</b>' + esc(txt.length>110 ? txt.slice(0,110) + '…' : txt) +
+  return '<button class="obs" data-acao="obs" data-id="' + t.id + '"><b>' + 'Onde parou' + '</b>' + esc(txt.length>110 ? txt.slice(0,110) + '…' : txt) +
     '<small>' + esc(u.nome) + ' · ' + brCurto(u.data) + (n.length>1 ? ' · ' + n.length + ' anotações' : '') + (q ? ' · ' + q + (q>1 ? ' fotos/vídeos' : ' foto/vídeo') : '') + '</small></button>'; }
 
 function cartao(v){
@@ -426,7 +429,7 @@ function cartao(v){
   if(espera) h += '<div class="nota">Hoje é dia de território afastado. Este cartão fica em espera.</div>';
   h += '<div class="saida">' + (af ? 'Grupos: <b>' + esc(v.grupo) + '</b><br>' : '') + 'Saída: <b>' + esc(v.local) + '</b><br>' + (v.dia===5 ? 'Dirigente de ' + brCurto(af ? dataAfastado(5) : proxSabado()) : 'Dirigente') + ': <b>' + esc(dirigenteDe(v)) + '</b></div>';
   if(t){
-    h += '<div class="terr">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : '<div class="status livre">Livre: sugerido pelo rodízio</div>') + '<div class="meta">' + (t.tipo==='afastado' ? '<span class="pill esp">Afastado</span>' : pontos(t, v.dia)) +
+    h += '<div class="terr">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : '<div class="status livre">Livre: sugerido pelo rodízio</div>') + '<div class="meta">' + (t.tipo==='afastado' ? '<span class="pill esp">Afastado</span>' : '') +
       (v.pego ? '<span>desde ' + brCurto(v.desde) + (v.por ? ' · ' + esc(v.por) : '') + '</span>' : '') + '</div>' + obsResumo(t) + '<div class="acoes">' +
       (linkOk(t.link) ? '<a class="btn" href="' + esc(t.link) + '" target="_blank" rel="noopener">Abrir cartão</a>' : '') +
       '<button class="btn" data-acao="obs" data-id="' + t.id + '">' + ((t.notas||[]).length ? 'Anotações (' + t.notas.length + ')' : 'Onde parou') + '</button>' +
@@ -568,7 +571,12 @@ function telaCadastro(){
     '</small></div>' + (admin ? '<button class="btn mini" data-acao="saida" data-id="' + v.id + '">Editar</button>' : '') + '</div>').join('') + '</div>';
   return h;
 }
+// Data de hoje no topo; muda sozinha quando o dia vira.
+let diaMostrado = '';
+function mostrarHoje(){ const d = new Date(), sem = d.toLocaleDateString('pt-BR', {weekday:'long'});
+  document.getElementById('hoje').textContent = 'Hoje é ' + sem + ', ' + br(hojeISO()); diaMostrado = hojeISO(); }
 function desenhar(){
+  mostrarHoje();
   if(!S) return;
   const h = (location.hash||'').replace('#','');
   aba = ['semana','controle','registro','cadastro'].includes(h) ? h : 'semana';
@@ -591,7 +599,7 @@ let ultimoNome = '';
 const janelas = {
   concluir(id){ const v = vaga(id), t = terr(v.terr);
     abrir('<form data-form="concluir" data-id="' + id + '"><h3>Concluir ' + esc(t.nome) + '</h3><p>' + esc(nomeVaga(v)) + '. Depois de confirmar, este cartão é liberado e outro entra no lugar.' +
-      ((t.notas||[]).some(n => !n.fixa) ? ' As anotações de onde parou são apagadas; as referências fixas continuam.' : '') + '</p>' +
+      ((t.notas||[]).length ? ' As anotações de onde parou são apagadas.' : '') + '</p>' +
       '<div class="campo"><label for="f-nome">Seu nome</label><input id="f-nome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' +
       '<div class="campo"><label for="f-data">Data de conclusão</label><input id="f-data" type="date" max="' + hojeISO() + '" value="' + hojeISO() + '"></div>' + botoes('Confirmar conclusão') + '</form>'); },
   pegar(arg){ const p = String(arg).split('|'), id = p[0], v = vaga(id), sug = terr(v.terr), t = (p[1] && terr(p[1])) || sug;
@@ -640,7 +648,7 @@ const janelas = {
   'esc-apagar'(data){ if(!admin) return; S.escala = (S.escala||[]).filter(x => x.data!==data); salvar(); fechar(); desenhar(); toast('Sábado removido da escala.'); },
   obs(id){ const t = terr(id), n = t.notas||[];
     abrir('<form data-form="obs" data-id="' + id + '"><h3>Anotações – ' + esc(t.nome) + '</h3><p>Onde parou, pontos de referência, fotos e vídeos para quem for continuar o território.</p>' +
-      (n.length ? '<div class="notas">' + n.slice().reverse().map(x => '<div class="notinha"><div class="nt-topo"><small>' + esc(x.nome) + ' · ' + br(x.data) + (x.fixa ? ' · referência fixa' : '') + '</small>' +
+      (n.length ? '<div class="notas">' + n.slice().reverse().map(x => '<div class="notinha"><div class="nt-topo"><small>' + esc(x.nome) + ' · ' + br(x.data) + '' + '</small>' +
         (admin ? '<button type="button" class="btn mini perigo" data-acao="obs-apagar" data-id="' + id + '|' + x.id + '">Apagar</button>' : '') + '</div>' +
         (x.texto ? '<div class="nt-txt">' + esc(x.texto) + '</div>' : '') +
         ((x.midias||[]).length ? '<div class="midias">' + x.midias.map(m => '<div class="midia" data-mid="' + m.id + '" data-tipo="' + m.tipo + '">…</div>').join('') + '</div>' : '') + '</div>').join('') + '</div>'
@@ -648,7 +656,6 @@ const janelas = {
       '<h4>Nova anotação</h4>' +
       '<div class="campo"><label for="f-otxt">Onde parou / observações</label><textarea id="f-otxt" placeholder="Ex.: parei na Rua das Flores, n.º 120, lado direito. Falta a viela depois do mercado."></textarea></div>' +
       '<div class="campo"><label for="f-oarq">Fotos ou vídeos (opcional)</label><input id="f-oarq" type="file" accept="image/*,video/*" multiple></div>' +
-      '<label class="marca"><input id="f-ofixa" type="checkbox"> Referência fixa (continua depois de concluir)</label>' +
       '<div class="campo"><label for="f-onome">Seu nome</label><input id="f-onome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' + botoes('Salvar anotação') + '</form>', true);
     mostrarMidias(); },
   'obs-apagar'(par){ const p = par.split('|'), t = terr(p[0]), n = t && (t.notas||[]).find(x => x.id===p[1]); if(!n || !admin) return;
@@ -684,7 +691,7 @@ const envios = {
     if(!data) return erro('Informe a data.'); if(new Date(data + 'T12:00:00').getDay()!==6) return erro('Essa data não é um sábado.'); if(!nome) return erro('Informe o dirigente.');
     S.escala = (S.escala||[]).filter(x => x.data!==orig && x.data!==data); S.escala.push({data, nome}); S.escala.sort((a,b) => a.data.localeCompare(b.data));
     salvar(); fechar(); desenhar(); toast('Escala atualizada.'); },
-  async obs(id){ const t = terr(id), texto = val('f-otxt'), nome = val('f-onome'), arqs = [...document.getElementById('f-oarq').files], fixa = document.getElementById('f-ofixa').checked;
+  async obs(id){ const t = terr(id), texto = val('f-otxt'), nome = val('f-onome'), arqs = [...document.getElementById('f-oarq').files], fixa = false;
     if(!texto && !arqs.length) return erro('Escreva a anotação ou escolha uma foto ou vídeo.');
     if(!nome) return erro('Informe seu nome.');
     if(arqs.length > 6) return erro('Envie no máximo 6 arquivos por anotação.');
@@ -719,7 +726,7 @@ window.addEventListener('hashchange', desenhar);
 
 carregar();
 // Confere a planilha de tempos em tempos e sempre que a pessoa volta para a página.
-setInterval(() => { if(!document.hidden) buscar(); }, 45000);
+setInterval(() => { if(diaMostrado !== hojeISO()) desenhar(); if(!document.hidden) buscar(); }, 45000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) buscar(); });
 </script>
 </body>
