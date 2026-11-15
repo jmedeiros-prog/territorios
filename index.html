@@ -330,6 +330,8 @@ function dataAfastado(dia){ const h = new Date(); let s = ultimoDoMes(h.getFullY
 function datasAfastado(){ return [dataAfastado(5), dataAfastado(6)].sort().map(brCurto).join(' e '); }
 function ehUltimoSabado(s){ const p = s.split('-').map(Number); return ultimoDoMes(p[0], p[1]-1, 5)===s; }
 // Escala de sábado: quem dirige em cada data.
+// Data da próxima vez que aquele dia da semana cai (hoje conta). Muda sozinha conforme os dias passam.
+function proxData(dia){ const d = new Date(); d.setDate(d.getDate() + (dia - diaHoje() + 7) % 7); return iso(d); }
 function proxSabado(){ const d = new Date(); d.setDate(d.getDate() + (6 - d.getDay())); return iso(d); }
 function dirigenteEm(data){ const e = (S.escala||[]).find(x => x.data===data); return e ? e.nome : ''; }
 function dirigenteDe(v){ if(v.dia!==5) return v.dirigente; return dirigenteEm(v.turno==='rural' ? dataAfastado(5) : proxSabado()) || v.dirigente; }
@@ -440,7 +442,7 @@ function cartao(v){
   const t = terr(v.terr), af = v.turno==='rural';
   const hoje = af ? (dataAfastado(5)===hojeISO() || dataAfastado(6)===hojeISO()) : (v.dia===diaHoje() && !hojeEhAfastado(v.dia));
   const espera = !af && v.dia===diaHoje() && hojeEhAfastado(v.dia);
-  let h = '<article class="card' + (hoje?' hoje':'') + '"><div class="card-topo"><span class="dia">' + esc(af ? 'Último sábado e domingo do mês' : (v.grupo || DIAS[v.dia])) + '</span>' +
+  let h = '<article class="card' + (hoje?' hoje':'') + '"><div class="card-topo"><span class="dia">' + esc(af ? 'Último sábado e domingo do mês' : (v.grupo ? v.grupo + ' · ' : '') + DIAS[v.dia] + ' ' + brCurto(proxData(v.dia))) + '</span>' +
     (hoje ? '<span class="pill">Hoje</span>' : '<span class="pill suave">' + (af ? datasAfastado() : v.turno==='tarde' ? 'Tarde' : 'Manhã') + '</span>') + '</div>';
   if(espera) h += '<div class="nota">Hoje é dia de território rural. Este cartão fica em espera.</div>';
   h += '<div class="saida">' + (af ? 'Grupos: <b>' + esc(v.grupo) + '</b><br>' : '') + 'Saída: <b>' + esc(v.local) + '</b><br>' + (v.dia===5 ? 'Dirigente de ' + brCurto(af ? dataAfastado(5) : proxSabado()) : 'Dirigente') + ': <b>' + esc(dirigenteDe(v)) + '</b></div>';
