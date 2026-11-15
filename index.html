@@ -218,22 +218,8 @@ function dadosIniciais(){
     {id:'dom4', dia:6, turno:'manha', grupo:'Meireles', local:'Saída do grupo', dirigente:'Edson Ornaghi'},
     {id:'afs', dia:5, turno:'afastado', grupo:'Todos os grupos', local:'Salão do Reino', dirigente:'Todos os grupos'}
   ].map(v => Object.assign(v, {terr:null, desde:hojeISO()}));
-  const folha = [
-    ['C-04','Edson O.','09-28','09-28'],['C-05','Willian','10-26','11-09'],['C-05','Edson R.','12-03','12-17'],
-    ['C-06','Edson R.','09-11','09-25'],['C-06','Willian','10-20','12-08'],['C-07','Willian','09-01','09-15'],['C-07','Edson O.','10-19','10-26'],
-    ['C-08','Edson O.','09-02','09-16'],['C-08','Edson R.','10-19','11-16'],['C-09','Anísio','09-03','09-03'],['C-09','Edson O.','10-21','11-23'],
-    ['C-10','Edson O.','10-01','10-08'],['C-10','Edson R.','10-23','11-13'],
-    ['F-01','Anísio','09-05','09-12'],['F-01','George','10-26','11-02'],['F-01','Edson R.','11-12','11-26'],
-    ['Chácara Dora 01','Edson O. / Willian','09-07','09-14'],['Chácara Dora 01','Edson R.','11-20','11-30'],
-    ['Chácara Dora 02','George','09-14','09-21'],['Chácara Dora 02','Edson R.','11-20','11-30'],
-    ['Viçoso 01','Edson O.','09-20','09-20'],['Viçoso 01','Edson R.','11-29','12-20'],['Viçoso 02','Willian','09-20','09-27'],['Viçoso 02','Edson R.','11-29','12-20'],
-    ['Caxambu','Dirigente de sábado','09-13','09-13'],['Igaveta 01','Reis / George','09-07','09-14'],['Igaveta 02','Reis / George','09-07','09-14'],
-    ['Tigrão','George','09-06','09-06'],['Meireles','Betelita','11-16','11-16'],
-    ['T10','Edson O.','11-22','12-13'],['T11','Edson O.','11-22','12-13'],['T12','Edson O.','11-22','12-13'],
-    ['T02','Edson O.','11-23','11-30'],['T03','Edson R.','11-27','12-01'],['T07','Edson R.','12-04','12-18']
-  ];
-  const historico = folha.map((x,i) => { const data = '2025-' + x[3], d = new Date(data + 'T12:00:00');
-    return {id:'i'+i, terr:territorios.find(t => t.nome===x[0]).id, vaga:'', dia:(d.getDay()+6)%7, nome:x[1], para:x[1], desig:'2025-'+x[2], data, ciclo:0, reg:'importado'}; });
+  // Começa sem nenhum histórico: o registro é preenchido a partir das conclusões feitas no sistema.
+  const historico = [];
   S = {v:5, territorios, vagas, historico, senha:SENHA_PADRAO, escala:escalaInicial()};
   preencherVazias(); return S;
 }
