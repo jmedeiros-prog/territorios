@@ -147,6 +147,7 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .livre .btn.mini{display:flex;align-items:center}
 .btn.semvideo{opacity:.6}
 .rel-info{font-size:13px;color:var(--muted)}
+.camp-tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.04em;color:var(--accent-ink);background:var(--accent);border-radius:5px;padding:1px 5px;vertical-align:1px}
 .linha.rel{flex-wrap:wrap}
 .linha.rel>div:first-child{flex:1 1 220px}
 .linha.rel .rel-bt{display:flex;gap:6px;flex:1 1 100%;justify-content:flex-end}
@@ -430,6 +431,8 @@ function candidatosCampanha(v){
 function iniciarCampanha(nome, fim, tipos){
   const salvo = S.vagas.map(v => ({id:v.id, terr:v.terr, pego:!!v.pego, por:v.por || '', desde:v.desde}));
   S.vagas.forEach(v => { v.terr = null; v.pego = false; v.por = ''; });
+  // A campanha começa do zero: as anotações de antes saem dos cartões e ficam 30 dias em Administração > Anotações.
+  S.territorios.forEach(t => arquivarNotas(t, null, hojeISO(), '', 'início da campanha ' + nome));
   S.campanha = {ativa:true, nome, inicio:hojeISO(), fim, tipos, feitos:[], total:S.territorios.filter(t => t.ativo && tipos.includes(t.tipo)).length, salvo};
   preencherVazias();
 }
@@ -438,6 +441,9 @@ function encerrarCampanha(){
   S.vagas.forEach(v => { const s = (c.salvo || []).find(x => x.id===v.id); v.terr = s ? s.terr : null; v.pego = s ? s.pego : false; v.por = s ? s.por : ''; if(s) v.desde = s.desde; });
   const vistos = new Set();
   S.vagas.forEach(v => { const t = v.terr && terr(v.terr); if(!t || !t.ativo || vistos.has(v.terr)){ v.terr = null; v.pego = false; v.por = ''; } else vistos.add(v.terr); });
+  const voltam = new Set(S.vagas.filter(v => v.pego && v.terr).map(v => v.terr));
+  (S.arquivo||[]).filter(a => a.motivo==='início da campanha ' + c.nome && voltam.has(a.terr)).forEach(a => {
+    const t = terr(a.terr); if(t) t.notas = a.notas.concat(t.notas||[]); S.arquivo = S.arquivo.filter(x => x!==a); });
   delete c.salvo; preencherVazias();
 }
 function proximo(v, excluir){
@@ -534,9 +540,10 @@ function mostrarMidias(){ for(const el of camada.querySelectorAll('.midia[data-m
   const img = el.querySelector('img'); if(img) img.onerror = () => { img.parentNode.textContent = 'Abrir foto'; }; } }
 // Ao concluir, as anotações saem do cartão e ficam guardadas 30 dias (Administração > Anotações) para baixar o relatório.
 const DIAS_ARQUIVO = 30;
-function arquivarNotas(t, hid, data, nome){ const sai = t.notas||[]; t.notas = [];
+function arquivarNotas(t, hid, data, nome, motivo){ const sai = t.notas||[]; t.notas = [];
   if(!sai.length) return;
-  (S.arquivo = S.arquivo || []).push({id:'a'+Date.now(), hid, terr:t.id, nome:t.nome, concl:data, por:nome, guardado:hojeISO(), notas:sai}); }
+  (S.arquivo = S.arquivo || []).push({id:'a'+Date.now()+Math.random().toString(36).slice(2,6), hid, terr:t.id, nome:t.nome, concl:data, por:nome, guardado:hojeISO(), notas:sai, motivo:motivo || ''}); }
+const textoGuardado = a => a.motivo ? 'Guardado no ' + a.motivo + ' em ' + br(a.concl) : 'Concluído em ' + br(a.concl) + (a.por ? ' por ' + a.por : '');
 function expiraEm(a){ const d = new Date((a.guardado || a.concl) + 'T12:00:00'); d.setDate(d.getDate() + DIAS_ARQUIVO); return iso(d); }
 // Passados 30 dias, o relatório some e as fotos e vídeos vão para a lixeira do Drive.
 function limparArquivo(){ const hoje = hojeISO(), velhos = (S.arquivo||[]).filter(a => expiraEm(a) <= hoje);
@@ -667,6 +674,18 @@ function telaControle(){
   return h;
 }
 let anoServ = (() => { const d = new Date(); return d.getMonth()>=8 ? d.getFullYear()+1 : d.getFullYear(); })();
+// Designações de um território no ano de serviço, em ordem. As feitas em campanha levam "CAMP" antes do nome,
+// e quando uma campanha começa pula-se uma coluna (fica uma em branco) para separar do rodízio normal.
+function regsDe(t, ini, fim){
+  const l = S.historico.filter(x => x.terr===t.id && x.data>=ini && x.data<=fim).map(x => ({para:x.para || x.nome, desig:x.desig || '', concl:x.data, camp:x.camp || ''}))
+    .sort((a,b) => (a.desig||a.concl).localeCompare(b.desig||b.concl));
+  const v = S.vagas.find(x => x.terr===t.id && x.pego);
+  if(v && v.desde>=ini && v.desde<=fim) l.push({para:dirigenteDe(v), desig:v.desde, concl:'', camp:camp() ? camp().nome : ''});
+  const out = [];
+  l.forEach((r, i) => { if(r.camp && i>0 && l[i-1].camp!==r.camp) out.push(null); out.push(r); });
+  return out;
+}
+const nomeReg = r => (r.camp ? 'CAMP ' : '') + r.para;
 function telaRegistro(){
   const ini = (anoServ-1) + '-09-01', fim = anoServ + '-08-31';
   let h = '<div class="mes"><button class="btn mini leve" data-acao="ano" data-id="-1" aria-label="Ano anterior">◀</button><strong>Ano de serviço ' + anoServ +
@@ -677,20 +696,17 @@ function telaRegistro(){
   for(const tipo of Object.keys(TIPOS)){
     h += '<tr class="grupo"><td colspan="6">' + TIPOS[tipo] + '</td></tr>';
     for(const t of S.territorios.filter(x => x.ativo && x.tipo===tipo)){
-      const regs = S.historico.filter(x => x.terr===t.id && x.data>=ini && x.data<=fim).map(x => ({para:x.para || x.nome, desig:x.desig || '', concl:x.data}))
-        .sort((a,b) => (a.desig||a.concl).localeCompare(b.desig||b.concl));
-      const v = S.vagas.find(x => x.terr===t.id && x.pego);
-      if(v && v.desde>=ini && v.desde<=fim) regs.push({para:dirigenteDe(v), desig:v.desde, concl:''});
+      const regs = regsDe(t, ini, fim);
       let antes = ''; for(const x of S.historico){ if(x.terr===t.id && x.data<ini && x.data>antes) antes = x.data; }
       for(let i=0; i<Math.max(1, Math.ceil(regs.length/4)); i++){
         h += '<tr><td>' + (i ? '' : esc(t.nome)) + '</td><td>' + (i || !antes ? '' : br(antes)) + '</td>';
         for(let j=0; j<4; j++){ const r = regs[i*4+j];
-          h += '<td>' + (r ? '<b>' + esc(r.para) + '</b><small>' + (r.desig ? brCurto(r.desig) : '?') + ' → ' + (r.concl ? brCurto(r.concl) : 'em andamento') + '</small>' : '') + '</td>'; }
+          h += '<td>' + (r ? '<b>' + (r.camp ? '<span class="camp-tag" title="Campanha: ' + esc(r.camp) + '">CAMP</span> ' : '') + esc(r.para) + '</b><small>' + (r.desig ? brCurto(r.desig) : '?') + ' → ' + (r.concl ? brCurto(r.concl) : 'em andamento') + '</small>' : '') + '</td>'; }
         h += '</tr>';
       }
     }
   }
-  return h + '</tbody></table></div><div class="legenda"><span>Em cada designação: para quem foi designado, data da designação → data da conclusão.</span></div>';
+  return h + '</tbody></table></div><div class="legenda"><span>Em cada designação: para quem foi designado, data da designação → data da conclusão.</span><span><span class="camp-tag">CAMP</span> designação feita em campanha. Quando a campanha começa, fica uma coluna em branco para separar.</span></div>';
 }
 // Gera a folha "Registro de Designação de Território" em PDF, no formato do formulário.
 async function baixarPdf(){
@@ -698,15 +714,12 @@ async function baixarPdf(){
   const ini = (anoServ-1) + '-09-01', fim = anoServ + '-08-31', corpo = [];
   const centro = {halign:'center', valign:'middle'};
   for(const t of S.territorios.filter(x => x.ativo)){
-    const regs = S.historico.filter(x => x.terr===t.id && x.data>=ini && x.data<=fim).map(x => ({para:x.para || x.nome, desig:x.desig || '', concl:x.data}))
-      .sort((a,b) => (a.desig||a.concl).localeCompare(b.desig||b.concl));
-    const v = S.vagas.find(x => x.terr===t.id && x.pego);
-    if(v && v.desde>=ini && v.desde<=fim) regs.push({para:dirigenteDe(v), desig:v.desde, concl:''});
+    const regs = regsDe(t, ini, fim);
     let antes = ''; for(const x of S.historico){ if(x.terr===t.id && x.data<ini && x.data>antes) antes = x.data; }
     for(let i=0; i<Math.max(1, Math.ceil(regs.length/4)); i++){
       const a = [{content:t.nome, rowSpan:2, styles:Object.assign({fontStyle:'bold'}, centro)}, {content:i ? '' : br(antes), rowSpan:2, styles:centro}], b = [];
       for(let j=0; j<4; j++){ const r = regs[i*4+j];
-        a.push({content:r ? r.para.toUpperCase() : '', colSpan:2, styles:centro});
+        a.push({content:r ? nomeReg(r).toUpperCase() : '', colSpan:2, styles:centro});
         b.push({content:r && r.desig ? brCurto(r.desig) : '', styles:centro}, {content:r && r.concl ? brCurto(r.concl) : '', styles:centro}); }
       corpo.push(a, b);
     }
@@ -722,7 +735,7 @@ async function baixarPdf(){
     body:corpo, styles:{fontSize:8, cellPadding:1.4, lineColor:[90,90,90], lineWidth:0.2, textColor:[20,20,20], minCellHeight:6},
     headStyles:{fillColor:[225,232,244], textColor:[20,20,20], halign:'center', valign:'middle', fontStyle:'bold'},
     columnStyles:{0:{cellWidth:33}, 1:{cellWidth:24}},
-    didDrawPage:() => { doc.setFontSize(7); doc.text('*Ao iniciar uma nova folha, use esta coluna para registrar a data em que cada território foi concluído pela última vez.', 10, 203); }});
+    didDrawPage:() => { doc.setFontSize(7); doc.text('CAMP = designação feita em campanha. Quando a campanha começa, uma coluna fica em branco para separar do rodízio normal.', 10, 199.5); doc.text('*Ao iniciar uma nova folha, use esta coluna para registrar a data em que cada território foi concluído pela última vez.', 10, 203); }});
   const nome = 'registro-de-territorios-' + anoServ + '.pdf';
   try{
     const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
@@ -732,12 +745,12 @@ async function baixarPdf(){
 }
 function telaAnotacoes(){
   const l = (S.arquivo||[]).slice().sort((a,b) => (b.concl||'').localeCompare(a.concl||''));
-  let h = '<h2>Anotações de territórios concluídos</h2><p class="sub" style="margin-top:0">Quando um território é concluído, as anotações, fotos e vídeos dele saem do cartão e ficam aqui por ' + DIAS_ARQUIVO +
+  let h = '<h2>Anotações de territórios concluídos</h2><p class="sub" style="margin-top:0">Quando um território é concluído, ou quando uma campanha começa, as anotações, fotos e vídeos saem do cartão e ficam aqui por ' + DIAS_ARQUIVO +
     ' dias. Se precisar, baixe o relatório antes de sumir. Depois disso, tudo é apagado sozinho, inclusive as fotos e os vídeos do Drive.</p>';
   if(!l.length) return h + '<div class="vaziotxt">Nenhum relatório guardado agora.</div>';
   return h + '<div class="lista">' + l.map(a => { const m = a.notas.reduce((s,n) => s + (n.midias||[]).length, 0), fim = expiraEm(a);
     const resta = Math.max(0, Math.round((new Date(fim+'T12:00:00') - new Date(hojeISO()+'T12:00:00'))/864e5));
-    return '<div class="linha rel"><div><b>' + esc(a.nome) + '</b><small>Concluído em ' + br(a.concl) + (a.por ? ' por ' + esc(a.por) : '') + ' · ' + a.notas.length + (a.notas.length>1 ? ' anotações' : ' anotação') +
+    return '<div class="linha rel"><div><b>' + esc(a.nome) + '</b><small>' + esc(textoGuardado(a)) + ' · ' + a.notas.length + (a.notas.length>1 ? ' anotações' : ' anotação') +
       (m ? ' · ' + m + (m>1 ? ' fotos/vídeos' : ' foto/vídeo') : '') + '</small><div class="rel-info">Fica disponível até ' + br(fim) + (resta<=5 ? ' · <b>faltam ' + resta + (resta===1 ? ' dia' : ' dias') + '</b>' : '') + '</div></div>' +
       '<div class="rel-bt"><button class="btn mini leve" data-acao="rel-ver" data-id="' + a.id + '">Ver</button><button class="btn mini cheio" data-acao="rel-pdf" data-id="' + a.id + '">Baixar relatório</button>' +
       '<button class="btn mini perigo" data-acao="rel-apagar" data-id="' + a.id + '">Apagar</button></div></div>'; }).join('') + '</div>';
@@ -751,7 +764,7 @@ async function baixarRelatorio(id){
   doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('RELATÓRIO DE ANOTAÇÕES DO TERRITÓRIO', W/2, y, {align:'center'}); y += 7;
   doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text('Congregação Bela Vista', W/2, y, {align:'center'}); y += 10;
   doc.setFontSize(11);
-  [['Território', a.nome], ['Concluído em', br(a.concl)], ['Concluído por', a.por || '-'], ['Total de anotações', String(a.notas.length)]].forEach(([k,v]) => {
+  [['Território', a.nome]].concat(a.motivo ? [['Guardado', a.motivo + ', ' + br(a.concl)]] : [['Concluído em', br(a.concl)], ['Concluído por', a.por || '-']]).concat([ ['Total de anotações', String(a.notas.length)]]).forEach(([k,v]) => {
     doc.setFont('helvetica','bold'); doc.text(k + ':', M, y); doc.setFont('helvetica','normal'); doc.text(String(v), M + 42, y); y += 6; });
   y += 2; doc.setDrawColor(150); doc.line(M, y, W-M, y); y += 8;
   a.notas.forEach((n, i) => {
@@ -802,7 +815,8 @@ function telaCampanha(){
       '<p class="sub" style="margin-top:14px">Ao encerrar, o rodízio normal volta do ponto em que estava antes da campanha.</p>';
   }
   return '<h2>Campanha</h2><p class="sub" style="margin-top:0">Use em convites para o congresso, para a Celebração e outras campanhas. Enquanto ela durar, todos os grupos saem juntos de segunda a domingo, ' +
-    'cada dia tem o seu território até concluir, e o que foi concluído não volta para a lista. O rodízio normal fica guardado e volta quando você encerrar.</p>' +
+    'cada dia tem o seu território até concluir, e o que foi concluído não volta para a lista. O rodízio normal fica guardado e volta quando você encerrar. ' +
+    'As anotações de onde parou saem dos cartões e ficam ' + DIAS_ARQUIVO + ' dias em Anotações; os territórios que estavam em andamento recebem as anotações de volta quando a campanha acabar.</p>' +
     (c && !c.ativa ? '<div class="nota" style="margin-bottom:12px">Última campanha: ' + esc(c.nome) + ', de ' + br(c.inicio) + ' a ' + br(c.encerrada || c.inicio) + ', com ' + (c.feitos || []).length + ' de ' + c.total + ' territórios concluídos.</div>' : '') +
     '<form data-form="camp-iniciar"><div class="campo"><label for="f-cnome">Nome da campanha</label><input id="f-cnome" placeholder="Ex.: Convite para o congresso"></div>' +
     '<div class="campo"><label for="f-cfim">Fim previsto (opcional)</label><input id="f-cfim" type="date" min="' + hojeISO() + '"></div>' +
@@ -898,7 +912,7 @@ const janelas = {
   semvideo(id){ const t = terr(id); toast('O vídeo de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
   semmapa(id){ const t = terr(id); toast('O mapa de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
   'rel-ver'(id){ const a = (S.arquivo||[]).find(x => x.id===id); if(!a) return;
-    abrir('<h3>Anotações – ' + esc(a.nome) + '</h3><p>Concluído em ' + br(a.concl) + (a.por ? ' por ' + esc(a.por) : '') + '. Disponível até ' + br(expiraEm(a)) + '.</p>' +
+    abrir('<h3>Anotações – ' + esc(a.nome) + '</h3><p>' + esc(textoGuardado(a)) + '. Disponível até ' + br(expiraEm(a)) + '.</p>' +
       '<div class="notas">' + a.notas.map(x => '<div class="notinha"><div class="nt-topo"><small>' + esc(x.nome) + ' · ' + br(x.data) + '</small></div>' +
         (x.texto ? '<div class="nt-txt">' + esc(x.texto) + '</div>' : '') +
         ((x.midias||[]).length ? '<div class="midias">' + x.midias.map(m => '<div class="midia" data-mid="' + m.id + '" data-tipo="' + m.tipo + '">…</div>').join('') + '</div>' : '') + '</div>').join('') + '</div>' +
