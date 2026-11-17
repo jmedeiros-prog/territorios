@@ -117,6 +117,15 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .legenda .cel{width:18px;height:18px;border-radius:5px;font-size:10px}
 
 .lista{display:flex;flex-direction:column;gap:8px}
+.livre{display:flex;gap:6px;align-items:stretch}
+.livre>.btn:first-child{flex:1;text-align:left}
+.livre .btn.mini{display:flex;align-items:center}
+.btn.semvideo{opacity:.6}
+.rel-info{font-size:13px;color:var(--muted)}
+.linha.rel{flex-wrap:wrap}
+.linha.rel>div:first-child{flex:1 1 220px}
+.linha.rel .rel-bt{display:flex;gap:6px;flex:1 1 100%;justify-content:flex-end}
+.rel-info b{color:var(--danger)}
 .camp{background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:16px;padding:12px 14px;margin-bottom:16px;display:flex;flex-direction:column;gap:4px}
 .camp b{font-family:var(--display);font-size:18px;color:var(--accent)}
 .camp span{font-size:14px;font-weight:600}
@@ -256,6 +265,8 @@ function dadosIniciais(){
 // Ajusta dados gravados por versões anteriores: um só território afastado (sábado e domingo) e a escala de sábado.
 function migrar(){
   let mudou = false;
+  if(!Array.isArray(S.arquivo)){ S.arquivo = []; mudou = true; }
+  if(limparArquivo()) mudou = true;
   if(S.vagas.some(v => v.id==='afa' || v.id==='afb')){ S.vagas = S.vagas.filter(v => v.id!=='afa' && v.id!=='afb');
     const a = S.vagas.find(v => v.id==='afs'); if(a) a.grupo = 'Todos os grupos'; mudou = true; }
   if(!S.escala){ S.escala = escalaInicial(); mudou = true; }
@@ -446,7 +457,7 @@ function concluir(vagaId, nome, data){
     if(dias.length && dias.every(d => t.feitos.includes(d))){ t.feitos = []; t.ciclo++; fechou = true; }
   }
   v.terr = null; v.pego = false; v.por = '';
-  limparNotas(t);
+  arquivarNotas(t, S.historico[S.historico.length-1].id, data, nome);
   const p = proximo(v, t.id);
   if(p){ v.terr = p; v.desde = data; }
   preencherVazias(t.id); salvar();
@@ -463,6 +474,8 @@ function desfazer(hid){
     if(h.ciclo>0 && h.ciclo===t.ciclo-1 && doCiclo(t.ciclo).length===0) t.ciclo--;
     t.feitos = [...new Set(doCiclo(t.ciclo).map(x => x.dia))];
   }
+  const ar = (S.arquivo||[]).find(a => a.hid===h.id);
+  if(ar && t){ t.notas = ar.notas.concat(t.notas||[]); S.arquivo = S.arquivo.filter(a => a!==ar); }
   const v = vaga(h.vaga);
   if(t && v && !v.pego && !ocupados().has(t.id)){ v.terr = t.id; v.pego = true; v.por = h.pegou || ''; v.desde = h.desig || hojeISO(); }
   salvar();
@@ -494,9 +507,23 @@ function reduzir(file){ return new Promise(ok => { const img = new Image(), u = 
 function mostrarMidias(){ for(const el of camada.querySelectorAll('.midia[data-mid]')){ const id = encodeURIComponent(el.dataset.mid), video = el.dataset.tipo==='video';
   el.innerHTML = '<a href="https://drive.google.com/file/d/' + id + '/view" target="_blank" rel="noopener">' + (video ? '▶ Abrir vídeo' : '<img alt="Foto da anotação (toque para abrir)" src="https://drive.google.com/thumbnail?id=' + id + '&sz=w400">') + '</a>';
   const img = el.querySelector('img'); if(img) img.onerror = () => { img.parentNode.textContent = 'Abrir foto'; }; } }
-// Ao concluir, as anotações do território são apagadas.
-function limparNotas(t){ const sai = t.notas||[]; t.notas = [];
-  sai.forEach(n => (n.midias||[]).forEach(m => midiaDel(m.id).catch(() => {}))); }
+// Ao concluir, as anotações saem do cartão e ficam guardadas 30 dias (Administração > Anotações) para baixar o relatório.
+const DIAS_ARQUIVO = 30;
+function arquivarNotas(t, hid, data, nome){ const sai = t.notas||[]; t.notas = [];
+  if(!sai.length) return;
+  (S.arquivo = S.arquivo || []).push({id:'a'+Date.now(), hid, terr:t.id, nome:t.nome, concl:data, por:nome, guardado:hojeISO(), notas:sai}); }
+function expiraEm(a){ const d = new Date((a.guardado || a.concl) + 'T12:00:00'); d.setDate(d.getDate() + DIAS_ARQUIVO); return iso(d); }
+// Passados 30 dias, o relatório some e as fotos e vídeos vão para a lixeira do Drive.
+function limparArquivo(){ const hoje = hojeISO(), velhos = (S.arquivo||[]).filter(a => expiraEm(a) <= hoje);
+  if(!velhos.length) return false;
+  velhos.forEach(a => a.notas.forEach(n => (n.midias||[]).forEach(m => midiaDel(m.id).catch(() => {}))));
+  S.arquivo = S.arquivo.filter(a => !velhos.includes(a)); return true; }
+// "Veja o território": abre o vídeo de onde começa e termina. Sem vídeo cadastrado, o botão avisa.
+function botaoVideo(t, mini){ const c = 'btn' + (mini ? ' mini' : '');
+  return linkOk(t.video) ? '<a class="' + c + '" href="' + esc(t.video) + '" target="_blank" rel="noopener">▶ ' + (mini ? 'Vídeo' : 'Veja o território') + '</a>'
+    : '<button type="button" class="' + c + ' semvideo" data-acao="semvideo" data-id="' + t.id + '">▶ ' + (mini ? 'Vídeo' : 'Veja o território') + '</button>'; }
+function botaoMapa(t){ return linkOk(t.link) ? '<a class="btn mini" href="' + esc(t.link) + '" target="_blank" rel="noopener">Mapa</a>'
+    : '<button type="button" class="btn mini semvideo" data-acao="semmapa" data-id="' + t.id + '">Mapa</button>'; }
 function obsResumo(t){ const n = t.notas||[]; if(!n.length) return '';
   const u = n[n.length-1], q = n.reduce((s,x) => s + (x.midias||[]).length, 0), txt = u.texto || '(foto ou vídeo)';
   return '<button class="obs" data-acao="obs" data-id="' + t.id + '"><b>' + 'Onde parou' + '</b>' + esc(txt.length>110 ? txt.slice(0,110) + '…' : txt) +
@@ -524,7 +551,7 @@ function cartao(v){
     h += '<div class="terr' + (rep ? '" style="color:var(--danger)' : '') + '">' + esc(t.nome) + '</div>' + (v.pego ? '<div class="status">Status: em andamento</div>' : (rep ? '<div class="status alerta">Já trabalhado neste mês</div><div class="alerta-mes">' + textoAlerta(v, rep) + '</div>' : '<div class="status livre">' + (camp() ? 'Livre: próximo da campanha' : 'Livre: sugerido pelo rodízio') + '</div>')) + '<div class="meta">' + (semCiclo(t.tipo) ? '<span class="pill esp">' + TIPOS[t.tipo] + '</span>' : '') +
       (v.pego ? '<span>desde ' + brCurto(v.desde) + (v.por ? ' · ' + esc(v.por) : '') + '</span>' : '') + '</div>' + obsResumo(t) + '<div class="acoes">' +
       (linkOk(t.link) ? '<a class="btn" href="' + esc(t.link) + '" target="_blank" rel="noopener">Abrir cartão</a>' : '') +
-      (linkOk(t.video) ? '<a class="btn" href="' + esc(t.video) + '" target="_blank" rel="noopener">▶ Vídeo do território</a>' : '') +
+      botaoVideo(t) +
       '<button class="btn" data-acao="obs" data-id="' + t.id + '">' + ((t.notas||[]).length ? 'Anotações (' + t.notas.length + ')' : 'Onde parou') + '</button>' +
       (v.pego ? '<button class="btn cheio" data-acao="concluir" data-id="' + v.id + '">Concluir</button>' : '<button class="btn cheio" data-acao="pegar" data-id="' + v.id + '">Pegar território</button>' +
         (alternativas(v).length ? '<button class="btn" data-acao="outros" data-id="' + v.id + '">Outros livres (' + alternativas(v).length + ')</button>' : ''));
@@ -654,6 +681,47 @@ async function baixarPdf(){
     else doc.save(nome);
   }catch(e){ if(e && e.code==='declined') return; toast('Não foi possível salvar o PDF aqui. Tente abrir a página no navegador.'); }
 }
+function telaAnotacoes(){
+  const l = (S.arquivo||[]).slice().sort((a,b) => (b.concl||'').localeCompare(a.concl||''));
+  let h = '<h2>Anotações de territórios concluídos</h2><p class="sub" style="margin-top:0">Quando um território é concluído, as anotações, fotos e vídeos dele saem do cartão e ficam aqui por ' + DIAS_ARQUIVO +
+    ' dias. Se precisar, baixe o relatório antes de sumir. Depois disso, tudo é apagado sozinho, inclusive as fotos e os vídeos do Drive.</p>';
+  if(!l.length) return h + '<div class="vaziotxt">Nenhum relatório guardado agora.</div>';
+  return h + '<div class="lista">' + l.map(a => { const m = a.notas.reduce((s,n) => s + (n.midias||[]).length, 0), fim = expiraEm(a);
+    const resta = Math.max(0, Math.round((new Date(fim+'T12:00:00') - new Date(hojeISO()+'T12:00:00'))/864e5));
+    return '<div class="linha rel"><div><b>' + esc(a.nome) + '</b><small>Concluído em ' + br(a.concl) + (a.por ? ' por ' + esc(a.por) : '') + ' · ' + a.notas.length + (a.notas.length>1 ? ' anotações' : ' anotação') +
+      (m ? ' · ' + m + (m>1 ? ' fotos/vídeos' : ' foto/vídeo') : '') + '</small><div class="rel-info">Fica disponível até ' + br(fim) + (resta<=5 ? ' · <b>faltam ' + resta + (resta===1 ? ' dia' : ' dias') + '</b>' : '') + '</div></div>' +
+      '<div class="rel-bt"><button class="btn mini leve" data-acao="rel-ver" data-id="' + a.id + '">Ver</button><button class="btn mini cheio" data-acao="rel-pdf" data-id="' + a.id + '">Baixar relatório</button>' +
+      '<button class="btn mini perigo" data-acao="rel-apagar" data-id="' + a.id + '">Apagar</button></div></div>'; }).join('') + '</div>';
+}
+// Relatório em PDF das anotações de um território concluído. Fotos e vídeos vão como link para o Drive.
+async function baixarRelatorio(id){
+  const a = (S.arquivo||[]).find(x => x.id===id); if(!a) return;
+  if(!window.jspdf){ toast('Não consegui carregar o gerador de PDF. Confira a internet e tente de novo.'); return; }
+  const doc = new window.jspdf.jsPDF({unit:'mm', format:'a4'}), W = 210, M = 16, larg = W - 2*M; let y = 18;
+  const pula = h => { if(y + h > 282){ doc.addPage(); y = 18; } };
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('RELATÓRIO DE ANOTAÇÕES DO TERRITÓRIO', W/2, y, {align:'center'}); y += 7;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text('Congregação Bela Vista', W/2, y, {align:'center'}); y += 10;
+  doc.setFontSize(11);
+  [['Território', a.nome], ['Concluído em', br(a.concl)], ['Concluído por', a.por || '-'], ['Total de anotações', String(a.notas.length)]].forEach(([k,v]) => {
+    doc.setFont('helvetica','bold'); doc.text(k + ':', M, y); doc.setFont('helvetica','normal'); doc.text(String(v), M + 42, y); y += 6; });
+  y += 2; doc.setDrawColor(150); doc.line(M, y, W-M, y); y += 8;
+  a.notas.forEach((n, i) => {
+    pula(20); doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text((i+1) + '. ' + br(n.data) + (n.nome ? '  ·  ' + n.nome : ''), M, y); y += 6;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+    doc.splitTextToSize(n.texto || '(sem texto, só foto ou vídeo)', larg).forEach(l => { pula(6); doc.text(l, M, y); y += 5.2; });
+    (n.midias||[]).forEach((m, k) => { pula(6); const u = 'https://drive.google.com/file/d/' + m.id + '/view';
+      doc.setTextColor(30,80,170); doc.textWithLink((m.tipo==='video' ? 'Vídeo ' : 'Foto ') + (k+1) + ': ' + u, M + 4, y, {url:u}); doc.setTextColor(0); y += 5.2; });
+    y += 4;
+  });
+  pula(10); doc.setFontSize(8); doc.setTextColor(110);
+  doc.text('Fotos e vídeos ficam no Google Drive até ' + br(expiraEm(a)) + '. Depois disso os links deixam de abrir.', M, 288); doc.setTextColor(0);
+  const nome = 'anotacoes-' + a.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-') + '-' + a.concl + '.pdf';
+  try{
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if(dl){ await dl.save({filename:nome, data:doc.output('blob')}); toast('Relatório salvo.'); }
+    else doc.save(nome);
+  }catch(e){ if(e && e.code==='declined') return; toast('Não foi possível salvar o PDF aqui. Tente abrir a página no navegador.'); }
+}
 function telaCadastro(){
   let h = admin ? '<div class="acoes" style="margin-bottom:14px"><button class="btn cheio" data-acao="novo">Adicionar cartão</button>' +
       '<button class="btn leve" data-acao="senha">Trocar senha</button><button class="btn perigo" data-acao="zerar">Zerar tudo</button></div>'
@@ -673,7 +741,7 @@ let diaMostrado = '';
 function mostrarHoje(){ const d = new Date(), sem = d.toLocaleDateString('pt-BR', {weekday:'long'});
   document.getElementById('hoje').textContent = 'Hoje é ' + sem + ', ' + br(hojeISO()); diaMostrado = hojeISO(); }
 // Endereço da página só de leitura (programacao.html), que fica na mesma pasta do sistema.
-const ADM = ['registro', 'cadastro', 'campanha', 'copias', 'textos'];
+const ADM = ['registro', 'cadastro', 'anotacoes', 'campanha', 'copias', 'textos'];
 function telaCampanha(){
   const c = S.campanha, nomes = ids => ids.map(id => terr(id)).filter(Boolean).map(t => esc(t.nome)).join(', ') || 'nenhum';
   if(camp()){
@@ -747,9 +815,9 @@ function desenhar(){
   const grupo = ADM.includes(aba) ? 'adm' : aba;
   document.querySelectorAll('.abas a').forEach(a => { if(a.dataset.aba===grupo) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
   if(grupo==='adm'){
-    if(!admin){ app.innerHTML = '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Área protegida</div><div class="saida">O Registro, os Cartões e as Cópias de segurança só abrem com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>'; return; }
-    const sub = [['registro','Registro'],['cadastro','Cartões'],['campanha','Campanha'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '<button class="sair" data-acao="adm">Sair</button>';
-    app.innerHTML = '<div class="subnav">' + sub + '</div>' + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : aba==='campanha' ? telaCampanha() : telaCopias());
+    if(!admin){ app.innerHTML = '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Área protegida</div><div class="saida">O Registro, os Cartões, as Anotações e as Cópias de segurança só abrem com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>'; return; }
+    const sub = [['registro','Registro'],['cadastro','Cartões'],['anotacoes','Anotações'],['campanha','Campanha'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '<button class="sair" data-acao="adm">Sair</button>';
+    app.innerHTML = '<div class="subnav">' + sub + '</div>' + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : aba==='anotacoes' ? telaAnotacoes() : aba==='campanha' ? telaCampanha() : telaCopias());
     return;
   }
   app.innerHTML = aba==='programacao' ? telaProgramacao() : aba==='controle' ? telaControle() : telaSemana();
@@ -769,7 +837,7 @@ let ultimoNome = '';
 const janelas = {
   concluir(id){ const v = vaga(id), t = terr(v.terr);
     abrir('<form data-form="concluir" data-id="' + id + '"><h3>Concluir ' + esc(t.nome) + '</h3><p>' + esc(nomeVaga(v)) + '. Depois de confirmar, este cartão é liberado e outro entra no lugar.' +
-      ((t.notas||[]).length ? ' As anotações de onde parou são apagadas.' : '') + '</p>' +
+      ((t.notas||[]).length ? ' As anotações saem do cartão e ficam guardadas por ' + DIAS_ARQUIVO + ' dias para o servo de território.' : '') + '</p>' +
       '<div class="campo"><label for="f-nome">Seu nome</label><input id="f-nome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' +
       '<div class="campo"><label for="f-data">Data de conclusão</label><input id="f-data" type="date" max="' + hojeISO() + '" value="' + hojeISO() + '"></div>' + botoes('Confirmar conclusão') + '</form>'); },
   pegar(arg){ const p = String(arg).split('|'), id = p[0], v = vaga(id), sug = terr(v.terr), t = (p[1] && terr(p[1])) || sug;
@@ -778,9 +846,24 @@ const janelas = {
       (jaFeitoNoMes(v, t) ? '<div class="alerta-mes" style="margin-top:8px">' + textoAlerta(v, jaFeitoNoMes(v, t)) + '</div>' : '') +
       '<input type="hidden" id="f-pterr" value="' + t.id + '"></div>' +
       '<div class="campo"><label for="f-pnome">Seu nome</label><input id="f-pnome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' + botoes('Confirmar') + '</form>', true); },
+  semvideo(id){ const t = terr(id); toast('O vídeo de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
+  semmapa(id){ const t = terr(id); toast('O mapa de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
+  'rel-ver'(id){ const a = (S.arquivo||[]).find(x => x.id===id); if(!a) return;
+    abrir('<h3>Anotações – ' + esc(a.nome) + '</h3><p>Concluído em ' + br(a.concl) + (a.por ? ' por ' + esc(a.por) : '') + '. Disponível até ' + br(expiraEm(a)) + '.</p>' +
+      '<div class="notas">' + a.notas.map(x => '<div class="notinha"><div class="nt-topo"><small>' + esc(x.nome) + ' · ' + br(x.data) + '</small></div>' +
+        (x.texto ? '<div class="nt-txt">' + esc(x.texto) + '</div>' : '') +
+        ((x.midias||[]).length ? '<div class="midias">' + x.midias.map(m => '<div class="midia" data-mid="' + m.id + '" data-tipo="' + m.tipo + '">…</div>').join('') + '</div>' : '') + '</div>').join('') + '</div>' +
+      '<div class="acoes" style="margin-top:14px"><button type="button" class="btn cheio" data-acao="rel-pdf" data-id="' + a.id + '">Baixar relatório</button><button type="button" class="btn leve" data-acao="fechar">Fechar</button></div>', true);
+    mostrarMidias(); },
+  'rel-pdf'(id){ if(admin) baixarRelatorio(id); },
+  'rel-apagar'(id){ if(!admin) return; const a = (S.arquivo||[]).find(x => x.id===id); if(!a) return;
+    abrir('<h3>Apagar relatório?</h3><p>As anotações de ' + esc(a.nome) + ' e as fotos e vídeos delas serão apagadas agora, sem esperar os ' + DIAS_ARQUIVO + ' dias.</p>' +
+      '<div class="acoes"><button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="button" class="btn perigo" data-acao="rel-apagar-sim" data-id="' + id + '">Apagar</button></div>'); },
+  'rel-apagar-sim'(id){ if(!admin) return; const a = (S.arquivo||[]).find(x => x.id===id); if(!a) return;
+    a.notas.forEach(n => (n.midias||[]).forEach(m => midiaDel(m.id).catch(() => {}))); S.arquivo = S.arquivo.filter(x => x!==a); salvar(); fechar(); desenhar(); toast('Relatório apagado.'); },
   outros(id){ const v = vaga(id), alt = alternativas(v), sug = terr(v.terr);
-    abrir('<h3>Outros territórios livres</h3><p>' + esc(nomeVaga(v)) + '. O rodízio sugere ' + esc(sug.nome) + ', mas estes também podem ser usados neste dia. Toque em um para pegar.</p>' +
-      (alt.length ? '<div class="lista">' + alt.map(a => '<button type="button" class="btn' + (jaFeitoNoMes(v, a) ? ' atencao" title="Já trabalhado neste mês neste dia da semana' : '') + '" data-acao="pegar" data-id="' + id + '|' + a.id + '">' + (jaFeitoNoMes(v, a) ? '⚠ ' : '') + esc(a.nome) + '</button>').join('') + '</div>'
+    abrir('<h3>Outros territórios livres</h3><p>' + esc(nomeVaga(v)) + '. O rodízio sugere ' + esc(sug.nome) + ', mas estes também podem ser usados neste dia. Toque no nome para pegar, ou em Mapa e Vídeo para conhecer o território antes.</p>' +
+      (alt.length ? '<div class="lista">' + alt.map(a => '<div class="livre"><button type="button" class="btn' + (jaFeitoNoMes(v, a) ? ' atencao" title="Já trabalhado neste mês neste dia da semana' : '') + '" data-acao="pegar" data-id="' + id + '|' + a.id + '">' + (jaFeitoNoMes(v, a) ? '⚠ ' : '') + esc(a.nome) + '</button>' + botaoMapa(a) + botaoVideo(a, true) + '</div>').join('') + '</div>'
         : '<div class="vaziotxt">Nenhum outro território livre para este dia agora.</div>') +
       '<div class="acoes" style="margin-top:14px"><button type="button" class="btn leve" data-acao="fechar">Fechar</button></div>', true); },
   adm(){ if(admin){ admin=false; desenhar(); return; }
@@ -892,7 +975,7 @@ const envios = {
   textos(){ if(!admin) return; const l = val('f-textos').split('\n').map(x => x.trim()).filter(Boolean);
     if(l.length > 60) return erro('Use no máximo 60 textos.'); if(l.some(x => x.length > 400)) return erro('Algum texto está muito longo. Use até 400 letras por linha.');
     S.textos = l; salvar(); desenhar(); toast(l.length ? 'Textos salvos.' : 'Lista vazia: nenhum texto aparece no topo.'); },
-  zerar(){ const senha = S.senha, escala = S.escala; const textos = S.textos; dadosIniciais(); S.senha = senha; if(escala) S.escala = escala; if(textos) S.textos = textos; salvar(); fechar(); desenhar(); toast('Dados zerados.'); }
+  zerar(){ (S.arquivo||[]).forEach(a => a.notas.forEach(n => (n.midias||[]).forEach(m => midiaDel(m.id).catch(() => {})))); const senha = S.senha, escala = S.escala; const textos = S.textos; dadosIniciais(); S.senha = senha; if(escala) S.escala = escala; if(textos) S.textos = textos; salvar(); fechar(); desenhar(); toast('Dados zerados.'); }
 };
 
 /* ============ EVENTOS ============ */

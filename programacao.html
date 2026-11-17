@@ -120,7 +120,7 @@ function cartao(v, data, rural){
     h += '<div class="tags">' + (TIPO[t.tipo] ? '<span class="pill esp">' + TIPO[t.tipo] + '</span>' : '') +
       (v.pego ? '<span class="pill ok">Em andamento</span>' : '<span class="pill">Previsto</span>') + '</div>';
     if(linkOk(t.link)) h += '<a class="mapa" href="' + esc(t.link) + '" target="_blank" rel="noopener">Ver cartão do território</a> ';
-    if(linkOk(t.video)) h += '<a class="mapa" href="' + esc(t.video) + '" target="_blank" rel="noopener">▶ Vídeo do território</a>';
+    if(linkOk(t.video)) h += '<a class="mapa" href="' + esc(t.video) + '" target="_blank" rel="noopener">▶ Veja o território</a>';
   }
   return h + '</div>';
 }
