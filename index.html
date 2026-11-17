@@ -147,6 +147,71 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .livre .btn.mini{display:flex;align-items:center}
 .btn.semvideo{opacity:.6}
 .rel-info{font-size:13px;color:var(--muted)}
+.seg{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;margin:-4px 0 18px;overflow-x:auto}
+.seg a{flex:1 0 auto;text-align:center;text-decoration:none;font-size:14px;font-weight:700;color:var(--muted);padding:8px 12px;border-radius:9px;white-space:nowrap}
+.seg a.on{background:var(--accent-soft);color:var(--accent)}
+.rel-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.relatorio{display:flex;flex-direction:column;gap:14px}
+.rel-cab{background:var(--accent);color:var(--accent-ink);border-radius:var(--radius);padding:16px 18px}
+.rel-cab small{opacity:.85;font-size:12px;letter-spacing:.04em;text-transform:uppercase;font-weight:700}
+.rel-cab h3{font-family:var(--display);font-size:24px;margin:4px 0 4px}
+.rel-cab span{font-size:14px;opacity:.95}
+.rel-cab .ok{font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.kpi strong{font-family:var(--display);font-size:28px;line-height:1;font-variant-numeric:tabular-nums}
+.kpi strong small{font-size:15px;color:var(--muted);font-weight:600}
+.kpi span{font-size:13px;color:var(--muted)}
+.kpi.hero{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:12px}
+.kpi.hero strong{font-size:44px;color:var(--accent)}
+.kpi.hero .tp-trilho{flex:1 1 100%;margin-top:6px;height:12px}
+.kpi.hero .tp-trilho i{background:var(--accent)}
+.rel-txt{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px}
+.rel-txt b{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.rel-txt p{margin:4px 0 0;font-size:15px;line-height:1.55}
+.rel-bloco{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.rel-bloco h4{font-family:var(--display);font-size:16px;margin:0 0 4px}
+.rel-bloco .sub{margin:0 0 10px}
+.rel-duas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.graf{width:100%;max-width:620px;height:auto;display:block;margin:auto}
+.graf .grade-l{stroke:var(--line);stroke-width:1}
+.graf .eixo{font-size:14px;fill:var(--muted);font-family:var(--body)}
+.graf .eixo.meta{font-weight:700}
+.graf .area{fill:var(--accent-soft)}
+.graf .linha-g{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.graf .ponto{fill:var(--accent);stroke:var(--surface);stroke-width:2}
+.graf .rot{font-size:17px;font-weight:700;fill:var(--ink);font-family:var(--body)}
+.graf .hit{fill:transparent}
+.graf .hit:hover{fill:var(--accent-soft);opacity:.35}
+.tipos-g{display:flex;flex-direction:column;gap:12px}
+.tp-cab{display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px}
+.tp-cab span{color:var(--muted)} .tp-cab span b{color:var(--ink)}
+.tp-trilho{height:10px;border-radius:6px;background:var(--bg);overflow:hidden}
+.tp-trilho i{display:block;height:100%;border-radius:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips span{font-size:13px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--bg)}
+.barras{position:relative;display:flex;flex-direction:column;gap:7px;padding-top:4px}
+.br-linha{display:grid;grid-template-columns:110px 1fr 62px;align-items:center;gap:8px;font-size:13.5px}
+.br-nome{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.br-trilho{position:relative;height:14px}
+.br-trilho i{display:block;height:100%;border-radius:0 4px 4px 0}
+.br-val{color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.br-media{position:absolute;top:0;bottom:0;left:calc(118px + (100% - 188px) * var(--media) / 100);border-left:2px dashed var(--muted);pointer-events:none}
+.br-media span{position:absolute;bottom:-20px;left:-2px;transform:translateX(-50%);font-size:11.5px;font-weight:700;color:var(--muted);white-space:nowrap;background:var(--surface);padding:0 4px}
+.barras{margin-bottom:22px}
+.leg-tipos{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:10px}
+.leg-tipos span{display:inline-flex;align-items:center;gap:6px}
+.leg-tipos i{width:12px;height:12px;border-radius:3px;display:block}
+.rel-tabela summary{cursor:pointer;font-weight:700;color:var(--accent);font-size:14px;padding:4px 0}
+@media (max-width:420px){.kpi{padding:10px}.kpi strong{font-size:24px}.kpi strong small{font-size:13px}.kpi span{font-size:12px}}
+@media print{
+  .topo,nav,footer,.subnav,.seg,.rel-topo,.sel-camp,.toast,.fundo{display:none!important}
+  body{background:#fff} main{max-width:none;padding:0}
+  .rel-topo h2{display:none}
+  .rel-bloco,.kpi,.rel-txt{break-inside:avoid}
+  .rel-tabela summary{display:none}
+  .graf{max-width:470px}
+}
 .camp-tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.04em;color:var(--accent-ink);background:var(--accent);border-radius:5px;padding:1px 5px;vertical-align:1px}
 .linha.rel{flex-wrap:wrap}
 .linha.rel>div:first-child{flex:1 1 220px}
@@ -438,6 +503,7 @@ function iniciarCampanha(nome, fim, tipos){
 }
 function encerrarCampanha(){
   const c = S.campanha; c.ativa = false; c.encerrada = hojeISO();
+  (S.campanhas = S.campanhas || []).push({nome:c.nome, inicio:c.inicio, fim:c.fim || '', encerrada:c.encerrada, tipos:c.tipos, total:c.total, feitos:c.feitos.slice()});
   S.vagas.forEach(v => { const s = (c.salvo || []).find(x => x.id===v.id); v.terr = s ? s.terr : null; v.pego = s ? s.pego : false; v.por = s ? s.por : ''; if(s) v.desde = s.desde; });
   const vistos = new Set();
   S.vagas.forEach(v => { const t = v.terr && terr(v.terr); if(!t || !t.ativo || vistos.has(v.terr)){ v.terr = null; v.pego = false; v.por = ''; } else vistos.add(v.terr); });
@@ -784,6 +850,90 @@ async function baixarRelatorio(id){
     else doc.save(nome);
   }catch(e){ if(e && e.code==='declined') return; toast('Não foi possível salvar o PDF aqui. Tente abrir a página no navegador.'); }
 }
+/* ============ RELATÓRIO DE CAMPANHA ============ */
+const COR_TIPO = {tarde:'#3f67a3', manha:'#1b8a5a', afastado:'#b86e12', rural:'#7a4a9e'};
+let campSel = null;
+function listaCampanhas(){
+  const l = (S.campanhas||[]).slice();
+  if(S.campanha && (S.campanha.ativa || !l.some(x => x.nome===S.campanha.nome && x.inicio===S.campanha.inicio)))
+    l.push({nome:S.campanha.nome, inicio:S.campanha.inicio, fim:S.campanha.fim || '', encerrada:S.campanha.ativa ? '' : (S.campanha.encerrada || ''), tipos:S.campanha.tipos, total:S.campanha.total, feitos:(S.campanha.feitos||[]).slice(), ativa:!!S.campanha.ativa});
+  return l.sort((a,b) => b.inicio.localeCompare(a.inicio));
+}
+const diasEntre = (a,b) => Math.round((new Date(b+'T12:00:00') - new Date(a+'T12:00:00'))/864e5);
+const pct = (a,b) => b ? Math.round(100*a/b) : 0;
+const plural = (n, um, varios) => n + ' ' + (n===1 ? um : varios);
+function dadosCampanha(c){
+  const fim = c.encerrada || hojeISO(), hs = S.historico.filter(h => h.camp===c.nome && h.data>=c.inicio && h.data<=fim);
+  const feitos = hs.map(h => { const t = terr(h.terr); return {id:h.terr, nome:t ? t.nome : '?', tipo:t ? t.tipo : 'tarde', ini:h.desig || h.data, fim:h.data, dias:Math.max(1, diasEntre(h.desig || h.data, h.data) + 1), por:h.para || h.nome}; })
+    .sort((a,b) => b.dias - a.dias || a.nome.localeCompare(b.nome, 'pt-BR', {numeric:true}));
+  const ids = new Set(feitos.map(f => f.id));
+  const participantes = S.territorios.filter(t => (c.tipos||[]).includes(t.tipo) && (t.ativo || ids.has(t.id)));
+  const total = Math.max(c.total || 0, participantes.length, feitos.length);
+  const faltam = participantes.filter(t => !ids.has(t.id));
+  const duracao = diasEntre(c.inicio, fim) + 1;
+  const media = feitos.length ? feitos.reduce((s,f) => s + f.dias, 0) / feitos.length : 0;
+  const porTipo = (c.tipos||[]).map(tp => ({tipo:tp, total:participantes.filter(t => t.tipo===tp).length, feitos:feitos.filter(f => f.tipo===tp).length})).filter(x => x.total);
+  const ritmo = []; for(let i=0; i<duracao; i++){ const d = new Date(c.inicio+'T12:00:00'); d.setDate(d.getDate()+i); const dia = iso(d); ritmo.push({dia, n:feitos.filter(f => f.fim<=dia).length}); }
+  return {fim, feitos, faltam, total, duracao, media, porTipo, ritmo};
+}
+function textoCampanha(c, D){
+  const p = pct(D.feitos.length, D.total), m = D.media.toLocaleString('pt-BR', {maximumFractionDigits:1});
+  let t = (c.ativa ? 'A campanha "' + c.nome + '" está em andamento há ' : 'A campanha "' + c.nome + '" durou ') + plural(D.duracao, 'dia', 'dias') + ' (' + br(c.inicio) + ' a ' + br(D.fim) + '). ';
+  t += 'Foram concluídos ' + D.feitos.length + ' de ' + D.total + ' territórios, ou seja, ' + p + '% do total. ';
+  if(D.feitos.length){
+    t += 'Em média, cada território levou ' + m + (D.media===1 ? ' dia' : ' dias') + ' para ser fechado, contando do dia em que foi pego até o dia em que foi concluído. ';
+    const rap = D.feitos.filter(f => f.dias===D.feitos[D.feitos.length-1].dias).map(f => f.nome), dem = D.feitos[0];
+    t += 'O mais rápido ' + (rap.length>1 ? 'foram ' + rap.slice(0,4).join(', ') : 'foi ' + rap[0]) + ' (' + plural(D.feitos[D.feitos.length-1].dias, 'dia', 'dias') + ')' + (dem.dias > D.feitos[D.feitos.length-1].dias ? ' e o mais demorado foi ' + dem.nome + ' (' + plural(dem.dias, 'dia', 'dias') + ').' : '.') + ' ';
+  }
+  if(D.faltam.length) t += (c.ativa ? 'Ainda faltam ' : 'Ficaram sem concluir ') + plural(D.faltam.length, 'território', 'territórios') + ': ' + D.faltam.map(x => x.nome).join(', ') + '.';
+  else if(D.total) t += 'Todos os territórios da campanha foram concluídos.';
+  return t;
+}
+function grafRitmo(D){
+  const W = 460, H = 210, L = 30, Rr = 12, T = 22, B = 30, n = D.ritmo.length, tot = Math.max(D.total, 1);
+  const x = i => L + (n<2 ? (W-L-Rr)/2 : i*(W-L-Rr)/(n-1)), y = v => T + (H-T-B) * (1 - v/tot);
+  const pts = D.ritmo.map((r,i) => x(i).toFixed(1) + ',' + y(r.n).toFixed(1)).join(' ');
+  let g = '<svg class="graf" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Territórios concluídos acumulados por dia">';
+  [0, .5, 1].forEach(f => { const v = Math.round(tot*f); g += '<line class="grade-l" x1="' + L + '" x2="' + (W-Rr) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text class="eixo" x="' + (L-6) + '" y="' + (y(v)+4) + '" text-anchor="end">' + v + '</text>'; });
+  g += '<text class="eixo meta" x="' + (W-Rr) + '" y="' + (y(tot)-5) + '" text-anchor="end">meta: ' + D.total + '</text>';
+  g += '<polygon class="area" points="' + x(0) + ',' + y(0) + ' ' + pts + ' ' + x(n-1) + ',' + y(0) + '"/><polyline class="linha-g" points="' + pts + '"/>';
+  D.ritmo.forEach((r,i) => { g += '<rect class="hit" x="' + (x(i) - (W-L-Rr)/Math.max(n-1,1)/2) + '" y="' + T + '" width="' + ((W-L-Rr)/Math.max(n-1,1)) + '" height="' + (H-T-B) + '"><title>' + br(r.dia) + ': ' + r.n + ' de ' + D.total + ' concluídos</title></rect>'; });
+  const u = D.ritmo[n-1]; g += '<circle class="ponto" cx="' + x(n-1) + '" cy="' + y(u.n) + '" r="5"/><text class="rot" x="' + (x(n-1)-8) + '" y="' + (y(u.n)-10) + '" text-anchor="end">' + u.n + '</text>';
+  g += '<text class="eixo" x="' + L + '" y="' + (H-8) + '">' + brCurto(D.ritmo[0].dia) + '</text><text class="eixo" x="' + (W-Rr) + '" y="' + (H-8) + '" text-anchor="end">' + brCurto(u.dia) + '</text>';
+  return g + '</svg>';
+}
+function grafDias(D){
+  if(!D.feitos.length) return '<div class="vaziotxt">Nenhum território concluído na campanha ainda.</div>';
+  const max = Math.max(...D.feitos.map(f => f.dias), 1), mpos = 100 * D.media / max;
+  const tps = [...new Set(D.feitos.map(f => f.tipo))];
+  return (tps.length>1 ? '<div class="leg-tipos">' + tps.map(tp => '<span><i style="background:' + COR_TIPO[tp] + '"></i>' + ROTULO[tp] + '</span>').join('') + '</div>' : '') + '<div class="barras" style="--media:' + mpos.toFixed(2) + '">' + D.feitos.map(f => '<div class="br-linha" title="' + esc(f.nome) + ': ' + plural(f.dias, 'dia', 'dias') + ' (' + brCurto(f.ini) + ' a ' + brCurto(f.fim) + ', ' + esc(f.por) + ')"><span class="br-nome">' + esc(f.nome) + '</span>' +
+    '<span class="br-trilho"><i style="width:' + Math.max(3, 100*f.dias/max).toFixed(1) + '%;background:' + COR_TIPO[f.tipo] + '"></i></span><span class="br-val">' + plural(f.dias, 'dia', 'dias') + '</span></div>').join('') +
+    '<div class="br-media"><span>média ' + D.media.toLocaleString('pt-BR', {maximumFractionDigits:1}) + '</span></div></div>';
+}
+function grafTipos(D){
+  return '<div class="tipos-g">' + D.porTipo.map(x => '<div class="tp-linha"><div class="tp-cab"><b>' + ROTULO[x.tipo] + '</b><span>' + x.feitos + ' de ' + x.total + ' · <b>' + pct(x.feitos, x.total) + '%</b></span></div>' +
+    '<div class="tp-trilho"><i style="width:' + pct(x.feitos, x.total) + '%;background:' + COR_TIPO[x.tipo] + '"></i></div></div>').join('') + '</div>';
+}
+function telaRelCampanha(){
+  const l = listaCampanhas();
+  if(!l.length) return '<h2>Relatório de campanha</h2><div class="vaziotxt">Nenhuma campanha ainda. Quando você iniciar uma em Administração > Campanha, o relatório aparece aqui.</div>';
+  const c = l.find(x => x.inicio + '|' + x.nome===campSel) || l[0], D = dadosCampanha(c), p = pct(D.feitos.length, D.total);
+  let h = '<div class="rel-topo"><h2 style="margin:0">Relatório de campanha</h2><button class="btn mini cheio" data-acao="imprimir">Imprimir ou salvar em PDF</button></div>';
+  if(l.length>1) h += '<div class="campo sel-camp" style="max-width:420px"><label for="f-relc">Campanha</label><select id="f-relc" data-acao-sel="relc">' + l.map(x => '<option value="' + esc(x.inicio + '|' + x.nome) + '"' + (x===c ? ' selected' : '') + '>' + esc(x.nome) + ' · ' + br(x.inicio) + (x.ativa ? ' (em andamento)' : '') + '</option>').join('') + '</select></div>';
+  h += '<section class="relatorio" id="relatorio"><div class="rel-cab"><div><small>Congregação Bela Vista · Relatório de campanha</small><h3>' + esc(c.nome) + '</h3><span>' + br(c.inicio) + ' a ' + br(D.fim) + ' · ' + plural(D.duracao, 'dia', 'dias') + (c.ativa ? ' · <b class="ok">em andamento</b>' : ' · encerrada') + '</span></div></div>';
+  h += '<div class="kpis"><div class="kpi hero"><strong>' + p + '%</strong><span>dos territórios concluídos</span><div class="tp-trilho"><i style="width:' + p + '%"></i></div></div>' +
+    '<div class="kpi"><strong>' + D.feitos.length + '<small> de ' + D.total + '</small></strong><span>territórios concluídos</span></div>' +
+    '<div class="kpi"><strong>' + (D.feitos.length ? D.media.toLocaleString('pt-BR', {maximumFractionDigits:1}) : '–') + '<small> dias</small></strong><span>em média para fechar cada um</span></div>' +
+    '<div class="kpi"><strong>' + D.faltam.length + '</strong><span>' + (c.ativa ? 'ainda faltam' : 'ficaram sem concluir') + '</span></div></div>';
+  h += '<div class="rel-txt"><b>Resumo</b><p>' + esc(textoCampanha(c, D)) + '</p></div>';
+  h += '<div class="rel-bloco"><h4>Ritmo da campanha</h4><p class="sub">Quantos territórios já estavam concluídos em cada dia.</p>' + grafRitmo(D) + '</div>';
+  h += '<div class="rel-duas"><div class="rel-bloco"><h4>Por tipo de território</h4>' + grafTipos(D) + '</div>' +
+    '<div class="rel-bloco"><h4>Faltam</h4>' + (D.faltam.length ? '<div class="chips">' + D.faltam.map(t => '<span>' + esc(t.nome) + '</span>').join('') + '</div>' : '<p class="sub" style="margin:0">Nenhum. Todos concluídos.</p>') + '</div></div>';
+  h += '<div class="rel-bloco"><h4>Tempo para fechar cada território</h4><p class="sub">Do dia em que foi pego até o dia da conclusão. 1 dia = concluído no mesmo dia.</p>' + grafDias(D) + '</div>';
+  h += '<details class="rel-tabela"><summary>Ver em tabela</summary><div class="rolagem"><table><thead><tr><th>Território</th><th>Pego em</th><th>Concluído em</th><th>Dias</th><th>Dirigente</th></tr></thead><tbody>' +
+    D.feitos.map(f => '<tr><td>' + esc(f.nome) + '</td><td>' + br(f.ini) + '</td><td>' + br(f.fim) + '</td><td>' + f.dias + '</td><td>' + esc(f.por) + '</td></tr>').join('') + '</tbody></table></div></details>';
+  return h + '</section>';
+}
 function telaCadastro(){
   let h = admin ? '<div class="acoes" style="margin-bottom:14px"><button class="btn cheio" data-acao="novo">Adicionar cartão</button>' +
       '<button class="btn leve" data-acao="senha">Trocar senha</button><button class="btn perigo" data-acao="zerar">Zerar tudo</button></div>'
@@ -803,7 +953,8 @@ let diaMostrado = '';
 function mostrarHoje(){ const d = new Date(), sem = d.toLocaleDateString('pt-BR', {weekday:'long'});
   document.getElementById('hoje').textContent = 'Hoje é ' + sem + ', ' + br(hojeISO()); diaMostrado = hojeISO(); }
 // Endereço da página só de leitura (programacao.html), que fica na mesma pasta do sistema.
-const ADM = ['registro', 'cadastro', 'anotacoes', 'campanha', 'copias', 'textos'];
+const ADM = ['registro', 'anotacoes', 'relcamp', 'cadastro', 'campanha', 'copias', 'textos'];
+const RELS = ['registro', 'anotacoes', 'relcamp'];
 function telaCampanha(){
   const c = S.campanha, nomes = ids => ids.map(id => terr(id)).filter(Boolean).map(t => esc(t.nome)).join(', ') || 'nenhum';
   if(camp()){
@@ -879,8 +1030,11 @@ function desenhar(){
   document.querySelectorAll('.abas a').forEach(a => { if(a.dataset.aba===grupo) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
   if(grupo==='adm'){
     if(!admin){ app.innerHTML = '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Área protegida</div><div class="saida">O Registro, os Cartões, as Anotações e as Cópias de segurança só abrem com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>'; return; }
-    const sub = [['registro','Registro'],['cadastro','Cartões'],['anotacoes','Anotações'],['campanha','Campanha'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '<button class="sair" data-acao="adm">Sair</button>';
-    app.innerHTML = '<div class="subnav">' + sub + '</div>' + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : aba==='anotacoes' ? telaAnotacoes() : aba==='campanha' ? telaCampanha() : telaCopias());
+    const emRel = RELS.includes(aba);
+    const sub = [['registro','Relatórios',emRel],['cadastro','Cartões'],['campanha','Campanha'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => { const on = x.length>2 ? x[2] : x[0]===aba;
+      return '<a href="#' + x[0] + '"' + (on ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>'; }).join('') + '<button class="sair" data-acao="adm">Sair</button>';
+    const seg = emRel ? '<div class="seg" role="tablist">' + [['registro','Registro'],['anotacoes','Anotações'],['relcamp','Campanhas']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '</div>' : '';
+    app.innerHTML = '<div class="subnav">' + sub + '</div>' + seg + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : aba==='anotacoes' ? telaAnotacoes() : aba==='relcamp' ? telaRelCampanha() : aba==='campanha' ? telaCampanha() : telaCopias());
     return;
   }
   app.innerHTML = aba==='programacao' ? telaProgramacao() : aba==='controle' ? telaControle() : telaSemana();
@@ -1060,6 +1214,7 @@ document.addEventListener('click', e => {
     const feito = () => toast('Link copiado. Agora é só colar no grupo.'), manual = () => { campo.focus(); campo.select(); toast('Segure o dedo sobre o link e escolha Copiar.'); };
     try{ navigator.clipboard.writeText(campo.value).then(feito, manual); }catch(err){ manual(); } return; }
   if(a==='pdf') return baixarPdf();
+  if(a==='imprimir'){ const d = document.querySelector('.rel-tabela'); if(d) d.open = true; return window.print(); }
   if(a==='zoom'){ el.classList.toggle('grande'); return; }
   if(a==='ano'){ anoServ += Number(id); return desenhar(); }
   if(janelas[a]) janelas[a](id);
@@ -1067,6 +1222,7 @@ document.addEventListener('click', e => {
 document.addEventListener('submit', e => { e.preventDefault(); const f = e.target.dataset.form; if(envios[f]) envios[f](e.target.dataset.id); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') fechar(); });
 window.addEventListener('hashchange', desenhar);
+document.addEventListener('change', e => { if(e.target.dataset.acaoSel==='relc'){ campSel = e.target.value; desenhar(); } });
 
 carregar();
 // Confere a planilha de tempos em tempos e sempre que a pessoa volta para a página.
