@@ -202,10 +202,34 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .leg-tipos{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:10px}
 .leg-tipos span{display:inline-flex;align-items:center;gap:6px}
 .leg-tipos i{width:12px;height:12px;border-radius:3px;display:block}
+.semana-g{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.sd{display:flex;flex-direction:column;align-items:center;gap:3px}
+.sd-col{height:70px;width:100%;max-width:38px;display:flex;align-items:flex-end;background:var(--bg);border-radius:6px;overflow:hidden}
+.sd-col i{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0}
+.sd b{font-size:16px;font-variant-numeric:tabular-nums}
+.sd span{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.sd small{font-size:11px;color:var(--muted)}
+.sd.zero b{color:var(--muted);font-weight:500}
+.filtros{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 12px;max-width:620px}
+table.hist th,table.hist td{text-align:left;padding:8px 10px;vertical-align:top}
+table.hist td small{display:block;color:var(--muted);font-size:12px}
+table.hist td.num{text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+table.hist th:nth-child(4){text-align:center}
+@media (max-width:600px){
+  table.hist thead{display:none}
+  table.hist,table.hist tbody{display:block}
+  table.hist tr{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  table.hist tr:last-child{border-bottom:0}
+  table.hist td{display:block;padding:0;border:0;min-width:0;text-align:left!important}
+  table.hist td:first-child{grid-column:1/-1;display:flex;align-items:baseline;gap:8px}
+  table.hist td:first-child small{display:inline}
+  table.hist td:not(:first-child)::before{content:attr(data-l);display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+  table.hist td.num{font-weight:700}
+}
 .rel-tabela summary{cursor:pointer;font-weight:700;color:var(--accent);font-size:14px;padding:4px 0}
 @media (max-width:420px){.kpi{padding:10px}.kpi strong{font-size:24px}.kpi strong small{font-size:13px}.kpi span{font-size:12px}}
 @media print{
-  .topo,nav,footer,.subnav,.seg,.rel-topo,.sel-camp,.toast,.fundo{display:none!important}
+  .topo,nav,footer,.subnav,.seg,.rel-topo,.sel-camp,.so-tela,.toast,.fundo{display:none!important}
   body{background:#fff} main{max-width:none;padding:0}
   .rel-topo h2{display:none}
   .rel-bloco,.kpi,.rel-txt{break-inside:avoid}
@@ -913,6 +937,86 @@ function grafTipos(D){
   return '<div class="tipos-g">' + D.porTipo.map(x => '<div class="tp-linha"><div class="tp-cab"><b>' + ROTULO[x.tipo] + '</b><span>' + x.feitos + ' de ' + x.total + ' · <b>' + pct(x.feitos, x.total) + '%</b></span></div>' +
     '<div class="tp-trilho"><i style="width:' + pct(x.feitos, x.total) + '%;background:' + COR_TIPO[x.tipo] + '"></i></div></div>').join('') + '</div>';
 }
+/* ============ RELATÓRIO GERAL DOS TERRITÓRIOS (rodízio normal, sem campanha) ============ */
+let rtPeriodo = null, rtTerr = '';
+function periodosRel(){
+  const l = [], hoje = hojeISO(), ano = Number(hoje.slice(0,4)) + (Number(hoje.slice(5,7)) >= 9 ? 1 : 0);
+  l.push({id:'ano', nome:'Ano de serviço ' + (ano-1) + '/' + String(ano).slice(2) + ' (set. a ago.)', ini:(ano-1) + '-09-01', fim:ano + '-08-31'});
+  const meses = new Set(S.historico.filter(h => !h.camp && h.data).map(h => h.data.slice(0,7))); meses.add(hoje.slice(0,7));
+  [...meses].sort().reverse().forEach(m => { const d = new Date(m + '-01T12:00:00'), u = new Date(d.getFullYear(), d.getMonth()+1, 0);
+    l.push({id:m, nome:d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}).replace(/^./, c => c.toUpperCase()), ini:m + '-01', fim:iso(u)}); });
+  l.push({id:'tudo', nome:'Todo o histórico', ini:'0000-01-01', fim:'9999-12-31'});
+  return l;
+}
+function dadosRelTerr(P){
+  const linhas = S.historico.filter(h => !h.camp && h.data>=P.ini && h.data<=P.fim && (!rtTerr || h.terr===rtTerr)).map(h => { const t = terr(h.terr), v = vaga(h.vaga);
+    return {terr:h.terr, nome:t ? t.nome : '?', tipo:t ? t.tipo : 'tarde', saida:v ? nomeVaga(v) : (DIAS[h.dia] || ''), dirigente:h.para || '', pegou:h.pegou || h.para || h.nome || '', ini:h.desig || h.data,
+      concluiu:h.nome || '', fim:h.data, dia:diaDe(h), dias:Math.max(1, diasEntre(h.desig || h.data, h.data) + 1)}; })
+    .sort((a,b) => b.fim.localeCompare(a.fim));
+  const andamento = camp() ? [] : S.vagas.filter(v => v.pego && v.terr && (!rtTerr || v.terr===rtTerr)).map(v => { const t = terr(v.terr);
+    return {terr:v.terr, nome:t ? t.nome : '?', tipo:t ? t.tipo : 'tarde', saida:nomeVaga(v), dirigente:dirigenteDe(v), pegou:v.por || dirigenteDe(v), ini:v.desde, concluiu:'', fim:'', dias:Math.max(1, diasEntre(v.desde, hojeISO()) + 1)}; });
+  const ativos = S.territorios.filter(t => t.ativo && (!rtTerr || t.id===rtTerr));
+  const trab = new Set(linhas.map(l => l.terr)), sem = ativos.filter(t => !trab.has(t.id) && !andamento.some(a => a.terr===t.id));
+  const media = linhas.length ? linhas.reduce((s,l) => s + l.dias, 0) / linhas.length : 0;
+  const porTerr = {}; linhas.forEach(l => { const x = porTerr[l.terr] = porTerr[l.terr] || {nome:l.nome, tipo:l.tipo, n:0, soma:0}; x.n++; x.soma += l.dias; });
+  const mediaTerr = Object.values(porTerr).map(x => ({nome:x.nome, tipo:x.tipo, n:x.n, dias:x.soma/x.n})).sort((a,b) => b.dias - a.dias || a.nome.localeCompare(b.nome, 'pt-BR', {numeric:true}));
+  const porTipo = Object.keys(TIPOS).map(tp => { const l = linhas.filter(x => x.tipo===tp); return {tipo:tp, n:l.length, media:l.length ? l.reduce((s,x) => s + x.dias, 0)/l.length : 0}; }).filter(x => x.n);
+  const outro = linhas.filter(l => l.pegou && l.concluiu && l.pegou!==l.concluiu).length;
+  return {linhas, andamento, ativos, trab, sem, media, mediaTerr, porTipo, outro};
+}
+const umaCasa = n => n.toLocaleString('pt-BR', {maximumFractionDigits:1});
+function textoRelTerr(P, D){
+  if(!D.linhas.length) return 'Nenhuma conclusão do rodízio normal em ' + P.nome.toLowerCase() + '.' + (D.andamento.length ? ' ' + plural(D.andamento.length, 'território está', 'territórios estão') + ' em andamento agora.' : '');
+  const quando = P.id==='tudo' ? 'Em todo o histórico' : P.id==='ano' ? 'No ' + P.nome.toLowerCase().replace(' (set. a ago.)', '') : 'Em ' + P.nome.toLowerCase();
+  if(rtTerr){ const u = D.linhas[0];
+    return quando + ', o ' + u.nome + ' foi concluído ' + plural(D.linhas.length, 'vez', 'vezes') + ' no rodízio normal e levou em média ' + umaCasa(D.media) + (D.media===1 ? ' dia' : ' dias') + ' do dia em que foi pego até a conclusão. ' +
+      'A última conclusão foi em ' + br(u.fim) + (u.concluiu ? ', por ' + u.concluiu : '') + '.' + (D.outro ? ' Em ' + plural(D.outro, 'caso', 'casos') + ' foi concluído por outro irmão, diferente de quem pegou.' : '') +
+      (D.andamento.length ? ' Agora está em andamento com ' + D.andamento[0].pegou + '.' : ''); }
+  let t = (P.id==='tudo' ? 'Em todo o histórico' : P.id==='ano' ? 'No ' + P.nome.toLowerCase().replace(' (set. a ago.)', '') : 'Em ' + P.nome.toLowerCase()) + ', o rodízio normal teve ' + plural(D.linhas.length, 'conclusão', 'conclusões') + ', em ' + D.trab.size + ' de ' + D.ativos.length + ' territórios (' + pct(D.trab.size, D.ativos.length) + '%). ';
+  t += 'Em média, cada território levou ' + umaCasa(D.media) + (D.media===1 ? ' dia' : ' dias') + ' do dia em que foi pego até a conclusão. ';
+  if(D.mediaTerr.length > 1) t += 'O que mais demorou foi ' + D.mediaTerr[0].nome + ' (' + umaCasa(D.mediaTerr[0].dias) + ' dias em média). ';
+  if(D.outro) t += 'Em ' + plural(D.outro, 'caso', 'casos') + ' o território foi concluído por outro irmão, diferente de quem pegou. ';
+  if(D.sem.length && !rtTerr) t += plural(D.sem.length, 'território ficou', 'territórios ficaram') + ' sem conclusão no período: ' + D.sem.map(x => x.nome).join(', ') + '.';
+  return t;
+}
+// Em que dia da semana o território (ou o rodízio todo) foi trabalhado no período.
+function blocoDias(D, tSel){
+  const cont = DIAS.map((nome, d) => { const l = D.linhas.filter(x => x.dia===d); return {nome, n:l.length, ultima:l[0] ? l[0].fim : ''}; });
+  const mx = Math.max(...cont.map(c => c.n), 1);
+  return '<div class="rel-bloco"><h4>Por dia da semana</h4><p class="sub">' + (tSel ? 'Em quais dias o ' + esc(tSel.nome) + ' foi trabalhado e quando foi a última vez em cada dia.' : 'Quantas conclusões houve em cada dia da semana.') + '</p>' +
+    '<div class="semana-g">' + cont.map(c => '<div class="sd' + (c.n ? '' : ' zero') + '" title="' + c.nome + ': ' + plural(c.n, 'conclusão', 'conclusões') + (c.ultima ? ', última em ' + br(c.ultima) : '') + '">' +
+      '<div class="sd-col"><i style="height:' + (c.n ? Math.max(8, 100*c.n/mx) : 0).toFixed(0) + '%"></i></div><b>' + c.n + '</b><span>' + c.nome.slice(0,3) + '</span>' +
+      (tSel ? '<small>' + (c.ultima ? brCurto(c.ultima) : '–') + '</small>' : '') + '</div>').join('') + '</div></div>';
+}
+function telaRelTerr(){
+  const ps = periodosRel(), P = ps.find(x => x.id===rtPeriodo) || ps[0], D = dadosRelTerr(P), tSel = rtTerr && terr(rtTerr);
+  let h = '<div class="rel-topo"><h2 style="margin:0">Relatório geral dos territórios</h2><button class="btn mini cheio" data-acao="imprimir">Imprimir ou salvar em PDF</button></div>' +
+    '<p class="sub so-tela" style="margin-top:0">Só o rodízio normal. As saídas de campanha têm relatório próprio, porque o jeito de trabalhar é diferente.</p>';
+  h += '<div class="filtros sel-camp"><div class="campo"><label for="f-rtp">Período</label><select id="f-rtp" data-acao-sel="rtp">' + ps.map(x => '<option value="' + x.id + '"' + (x===P ? ' selected' : '') + '>' + esc(x.nome) + '</option>').join('') + '</select></div>' +
+    '<div class="campo"><label for="f-rtt">Território</label><select id="f-rtt" data-acao-sel="rtt"><option value="">Todos os territórios</option>' +
+    Object.keys(TIPOS).map(tp => '<optgroup label="' + TIPOS[tp] + '">' + S.territorios.filter(t => t.tipo===tp).map(t => '<option value="' + t.id + '"' + (t.id===rtTerr ? ' selected' : '') + '>' + esc(t.nome) + '</option>').join('') + '</optgroup>').join('') + '</select></div></div>';
+  h += '<section class="relatorio"><div class="rel-cab"><div><small>Congregação Bela Vista · Relatório de territórios</small><h3>' + (tSel ? 'Território ' + esc(tSel.nome) : 'Rodízio normal') + '</h3><span>' + esc(P.nome) + '</span></div></div>';
+  h += '<div class="kpis"><div class="kpi"><strong>' + D.linhas.length + '</strong><span>' + (D.linhas.length===1 ? 'conclusão' : 'conclusões') + ' no período</span></div>' +
+    (tSel ? '<div class="kpi"><strong>' + (D.linhas[0] ? brCurto(D.linhas[0].fim) : '–') + '</strong><span>última conclusão</span></div>'
+      : '<div class="kpi"><strong>' + pct(D.trab.size, D.ativos.length) + '%</strong><span>dos territórios trabalhados (' + D.trab.size + ' de ' + D.ativos.length + ')</span></div>') +
+    '<div class="kpi"><strong>' + (D.linhas.length ? umaCasa(D.media) : '–') + '<small> dias</small></strong><span>em média para concluir</span></div></div>';
+  h += '<div class="rel-txt"><b>Resumo</b><p>' + esc(textoRelTerr(P, D)) + '</p></div>';
+  if(D.linhas.length) h += blocoDias(D, tSel);
+  if(!tSel && D.porTipo.length) h += '<div class="rel-bloco"><h4>Média de dias por tipo</h4><div class="tipos-g">' + (() => { const mx = Math.max(...D.porTipo.map(x => x.media), 1);
+    return D.porTipo.map(x => '<div class="tp-linha"><div class="tp-cab"><b>' + ROTULO[x.tipo] + '</b><span>' + plural(x.n, 'conclusão', 'conclusões') + ' · <b>' + umaCasa(x.media) + ' dias</b></span></div><div class="tp-trilho"><i style="width:' + (100*x.media/mx).toFixed(1) + '%;background:' + COR_TIPO[x.tipo] + '"></i></div></div>').join(''); })() + '</div></div>';
+  if(!tSel && D.mediaTerr.length){ const mx = Math.max(...D.mediaTerr.map(x => x.dias), 1), tps = [...new Set(D.mediaTerr.map(f => f.tipo))];
+    h += '<div class="rel-bloco"><h4>Tempo médio de cada território</h4><p class="sub">Do dia em que foi pego até a conclusão. 1 dia = concluído no mesmo dia.</p>' +
+      (tps.length>1 ? '<div class="leg-tipos">' + tps.map(tp => '<span><i style="background:' + COR_TIPO[tp] + '"></i>' + ROTULO[tp] + '</span>').join('') + '</div>' : '') +
+      '<div class="barras" style="--media:' + (100*D.media/mx).toFixed(2) + '">' + D.mediaTerr.map(f => '<div class="br-linha" title="' + esc(f.nome) + ': ' + umaCasa(f.dias) + ' dias em média, ' + plural(f.n, 'conclusão', 'conclusões') + '"><span class="br-nome">' + esc(f.nome) + '</span>' +
+      '<span class="br-trilho"><i style="width:' + Math.max(3, 100*f.dias/mx).toFixed(1) + '%;background:' + COR_TIPO[f.tipo] + '"></i></span><span class="br-val">' + umaCasa(f.dias) + (f.dias===1 ? ' dia' : ' dias') + '</span></div>').join('') +
+      '<div class="br-media"><span>média ' + umaCasa(D.media) + '</span></div></div></div>'; }
+  if(!tSel && D.sem.length) h += '<div class="rel-bloco"><h4>Sem conclusão no período</h4><div class="chips">' + D.sem.map(t => '<span>' + esc(t.nome) + '</span>').join('') + '</div></div>';
+  const linha = l => '<tr><td data-l="Território"><b>' + esc(l.nome) + '</b><small>' + esc(l.saida) + '</small></td><td data-l="Quem pegou">' + esc(l.pegou) + '<small>' + br(l.ini) + '</small></td><td data-l="Quem concluiu">' + (l.fim ? esc(l.concluiu) + '<small>' + br(l.fim) + '</small>' : '<span class="status">Em andamento</span>') + '</td><td class="num" data-l="Dias">' + plural(l.dias, 'dia', 'dias') + '</td><td data-l="Dirigente">' + esc(l.dirigente) + '</td></tr>';
+  h += '<div class="rel-bloco"><h4>Histórico completo' + (tSel ? ' do ' + esc(tSel.nome) : '') + '</h4><p class="sub">Quem pegou e quando, quem concluiu e quando, e quantos dias levou. O dirigente é o da escala daquela saída.</p>' +
+    (D.linhas.length || D.andamento.length ? '<div class="rolagem"><table class="hist"><thead><tr><th>Território</th><th>Quem pegou</th><th>Quem concluiu</th><th>Dias</th><th>Dirigente</th></tr></thead><tbody>' +
+      D.andamento.map(linha).join('') + D.linhas.map(linha).join('') + '</tbody></table></div>' : '<div class="vaziotxt">Nada registrado neste período.</div>') + '</div>';
+  return h + '</section>';
+}
 function telaRelCampanha(){
   const l = listaCampanhas();
   if(!l.length) return '<h2>Relatório de campanha</h2><div class="vaziotxt">Nenhuma campanha ainda. Quando você iniciar uma em Administração > Campanha, o relatório aparece aqui.</div>';
@@ -952,8 +1056,8 @@ let diaMostrado = '';
 function mostrarHoje(){ const d = new Date(), sem = d.toLocaleDateString('pt-BR', {weekday:'long'});
   document.getElementById('hoje').textContent = 'Hoje é ' + sem + ', ' + br(hojeISO()); diaMostrado = hojeISO(); }
 // Endereço da página só de leitura (programacao.html), que fica na mesma pasta do sistema.
-const ADM = ['registro', 'anotacoes', 'relcamp', 'cadastro', 'campanha', 'copias', 'textos'];
-const RELS = ['registro', 'anotacoes', 'relcamp'];
+const ADM = ['registro', 'relterr', 'anotacoes', 'relcamp', 'cadastro', 'campanha', 'copias', 'textos'];
+const RELS = ['registro', 'relterr', 'anotacoes', 'relcamp'];
 function telaCampanha(){
   const c = S.campanha, nomes = ids => ids.map(id => terr(id)).filter(Boolean).map(t => esc(t.nome)).join(', ') || 'nenhum';
   if(camp()){
@@ -1032,8 +1136,8 @@ function desenhar(){
     const emRel = RELS.includes(aba);
     const sub = [['registro','Relatórios',emRel],['cadastro','Cartões'],['campanha','Campanha'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => { const on = x.length>2 ? x[2] : x[0]===aba;
       return '<a href="#' + x[0] + '"' + (on ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>'; }).join('') + '<button class="sair" data-acao="adm">Sair</button>';
-    const seg = emRel ? '<div class="seg" role="tablist">' + [['registro','Registro'],['anotacoes','Anotações'],['relcamp','Campanhas']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '</div>' : '';
-    app.innerHTML = '<div class="subnav">' + sub + '</div>' + seg + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : aba==='anotacoes' ? telaAnotacoes() : aba==='relcamp' ? telaRelCampanha() : aba==='campanha' ? telaCampanha() : telaCopias());
+    const seg = emRel ? '<div class="seg" role="tablist">' + [['registro','Registro'],['relterr','Territórios'],['anotacoes','Anotações'],['relcamp','Campanhas']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '</div>' : '';
+    app.innerHTML = '<div class="subnav">' + sub + '</div>' + seg + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : aba==='anotacoes' ? telaAnotacoes() : aba==='relcamp' ? telaRelCampanha() : aba==='relterr' ? telaRelTerr() : aba==='campanha' ? telaCampanha() : telaCopias());
     return;
   }
   app.innerHTML = aba==='programacao' ? telaProgramacao() : aba==='controle' ? telaControle() : telaSemana();
@@ -1221,7 +1325,7 @@ document.addEventListener('click', e => {
 document.addEventListener('submit', e => { e.preventDefault(); const f = e.target.dataset.form; if(envios[f]) envios[f](e.target.dataset.id); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') fechar(); });
 window.addEventListener('hashchange', desenhar);
-document.addEventListener('change', e => { if(e.target.dataset.acaoSel==='relc'){ campSel = e.target.value; desenhar(); } });
+document.addEventListener('change', e => { const k = e.target.dataset.acaoSel; if(k==='relc'){ campSel = e.target.value; desenhar(); } if(k==='rtp'){ rtPeriodo = e.target.value; desenhar(); } if(k==='rtt'){ rtTerr = e.target.value; desenhar(); } });
 
 carregar();
 // Confere a planilha de tempos em tempos e sempre que a pessoa volta para a página.
