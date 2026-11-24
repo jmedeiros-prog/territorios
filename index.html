@@ -125,7 +125,7 @@ tr.grupo td{background:var(--accent-soft);color:var(--accent);text-align:left;fo
 .resumo strong{display:block;font-family:var(--display);font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
 .resumo span{font-size:13px;color:var(--muted)}
 .mes{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
-.mes strong{font-family:var(--display);font-size:19px;text-transform:capitalize}
+.mes strong{font-family:var(--display);font-size:19px}
 .rolagem{overflow-x:auto;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius)}
 table{border-collapse:collapse;width:100%;font-size:14px}
 th,td{padding:8px 4px;text-align:center;border-bottom:1px solid var(--line)}
@@ -210,6 +210,7 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .sd span{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase}
 .sd small{font-size:11px;color:var(--muted)}
 .sd.zero b{color:var(--muted);font-weight:500}
+.aj-tit{font-family:var(--display);font-size:16px;margin:22px 0 10px}
 .filtros{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 12px;max-width:620px}
 table.hist th,table.hist td{text-align:left;padding:8px 10px;vertical-align:top}
 table.hist td small{display:block;color:var(--muted);font-size:12px}
@@ -730,7 +731,7 @@ function telaControle(){
   const pre = mesRef.a + '-' + String(mesRef.m+1).padStart(2,'0');
   const doMes = S.historico.filter(h => h.data.startsWith(pre)).sort((a,b) => b.data.localeCompare(a.data));
   const ativos = S.territorios.filter(t => t.ativo);
-  const nomeMes = new Date(mesRef.a, mesRef.m, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  const nomeMes = new Date(mesRef.a, mesRef.m, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'}).replace(/^./, c => c.toUpperCase());
   let h = '<div class="mes"><button class="btn mini leve" data-acao="mes" data-id="-1" aria-label="Mês anterior">◀</button><strong>' + esc(nomeMes) +
     '</strong><button class="btn mini leve" data-acao="mes" data-id="1" aria-label="Próximo mês">▶</button></div>';
   h += '<div class="resumo"><div><strong>' + doMes.length + '</strong><span>conclusões no mês</span></div><div><strong>' + presos().size +
@@ -1017,6 +1018,25 @@ function telaRelTerr(){
       D.andamento.map(linha).join('') + D.linhas.map(linha).join('') + '</tbody></table></div>' : '<div class="vaziotxt">Nada registrado neste período.</div>') + '</div>';
   return h + '</section>';
 }
+/* ============ AJUSTAR DATAS (admin) ============ */
+// Corrige quem pegou, a data em que pegou e a data de conclusão. O Registro de Designação usa esses dados, então a folha já sai corrigida.
+let ajTerr = '';
+function telaAjustes(){
+  const and = S.vagas.filter(v => v.pego && v.terr && (!ajTerr || v.terr===ajTerr));
+  const conc = S.historico.filter(h => !ajTerr || h.terr===ajTerr).slice().sort((a,b) => (b.data||'').localeCompare(a.data||'')).slice(0, ajTerr ? 200 : 40);
+  let h = '<h2>Ajustar datas</h2><p class="sub" style="margin-top:0">Use quando alguém pegou ou concluiu um território na data errada, por exemplo porque recebeu o lembrete do WhatsApp e achou que a saída era naquele dia. ' +
+    'A correção vale na hora para o cartão de território (Registro de Designação), para os relatórios e para a planilha.</p>';
+  h += '<div class="campo" style="max-width:320px"><label for="f-ajt">Território</label><select id="f-ajt" data-acao-sel="ajt"><option value="">Todos os territórios</option>' +
+    Object.keys(TIPOS).map(tp => '<optgroup label="' + TIPOS[tp] + '">' + S.territorios.filter(t => t.tipo===tp).map(t => '<option value="' + t.id + '"' + (t.id===ajTerr ? ' selected' : '') + '>' + esc(t.nome) + '</option>').join('') + '</optgroup>').join('') + '</select></div>';
+  h += '<h3 class="aj-tit">Em andamento</h3>' + (and.length ? '<div class="lista">' + and.map(v => { const t = terr(v.terr);
+    return '<div class="linha"><div><b>' + esc(t.nome) + '</b><small>' + esc(nomeVaga(v)) + ' · pego em <b>' + br(v.desde) + '</b> por ' + esc(v.por || dirigenteDe(v)) + '</small></div>' +
+      '<button class="btn mini cheio" data-acao="aj-v" data-id="' + v.id + '">Ajustar</button></div>'; }).join('') + '</div>' : '<div class="vaziotxt">Nenhum território em andamento' + (ajTerr ? ' com esse filtro' : '') + '.</div>');
+  h += '<h3 class="aj-tit">Concluídos' + (ajTerr ? '' : ' (os 40 mais recentes; escolha um território para ver todos)') + '</h3>' + (conc.length ? '<div class="lista">' + conc.map(x => { const t = terr(x.terr), v = vaga(x.vaga);
+    return '<div class="linha"><div><b>' + (x.camp ? '<span class="camp-tag">CAMP</span> ' : '') + esc(t ? t.nome : '?') + '</b><small>' + esc(v ? nomeVaga(v) : (DIAS[x.dia] || '')) +
+      ' · pego em <b>' + br(x.desig || x.data) + '</b> por ' + esc(quemPegou(x)) + ' · concluído em <b>' + br(x.data) + '</b>' + (x.nome ? ' por ' + esc(x.nome) : '') + '</small></div>' +
+      '<button class="btn mini cheio" data-acao="aj-h" data-id="' + x.id + '">Ajustar</button></div>'; }).join('') + '</div>' : '<div class="vaziotxt">Nenhuma conclusão' + (ajTerr ? ' desse território' : '') + '.</div>');
+  return h;
+}
 function telaRelCampanha(){
   const l = listaCampanhas();
   if(!l.length) return '<h2>Relatório de campanha</h2><div class="vaziotxt">Nenhuma campanha ainda. Quando você iniciar uma em Administração > Campanha, o relatório aparece aqui.</div>';
@@ -1056,7 +1076,7 @@ let diaMostrado = '';
 function mostrarHoje(){ const d = new Date(), sem = d.toLocaleDateString('pt-BR', {weekday:'long'});
   document.getElementById('hoje').textContent = 'Hoje é ' + sem + ', ' + br(hojeISO()); diaMostrado = hojeISO(); }
 // Endereço da página só de leitura (programacao.html), que fica na mesma pasta do sistema.
-const ADM = ['registro', 'relterr', 'anotacoes', 'relcamp', 'cadastro', 'campanha', 'copias', 'textos'];
+const ADM = ['registro', 'relterr', 'anotacoes', 'relcamp', 'ajustes', 'cadastro', 'campanha', 'copias', 'textos'];
 const RELS = ['registro', 'relterr', 'anotacoes', 'relcamp'];
 function telaCampanha(){
   const c = S.campanha, nomes = ids => ids.map(id => terr(id)).filter(Boolean).map(t => esc(t.nome)).join(', ') || 'nenhum';
@@ -1134,10 +1154,10 @@ function desenhar(){
   if(grupo==='adm'){
     if(!admin){ app.innerHTML = '<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><div class="terr">Área protegida</div><div class="saida">O Registro, os Cartões, as Anotações e as Cópias de segurança só abrem com a senha da administração.</div><div class="acoes"><button class="btn cheio" data-acao="adm">Entrar com a senha</button></div></div>'; return; }
     const emRel = RELS.includes(aba);
-    const sub = [['registro','Relatórios',emRel],['cadastro','Cartões'],['campanha','Campanha'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => { const on = x.length>2 ? x[2] : x[0]===aba;
+    const sub = [['registro','Relatórios',emRel],['ajustes','Ajustar datas'],['cadastro','Cartões'],['campanha','Campanha'],['copias','Cópias de segurança'],['textos','Textos bíblicos']].map(x => { const on = x.length>2 ? x[2] : x[0]===aba;
       return '<a href="#' + x[0] + '"' + (on ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>'; }).join('') + '<button class="sair" data-acao="adm">Sair</button>';
     const seg = emRel ? '<div class="seg" role="tablist">' + [['registro','Registro'],['relterr','Territórios'],['anotacoes','Anotações'],['relcamp','Campanhas']].map(x => '<a href="#' + x[0] + '"' + (x[0]===aba ? ' class="on" aria-current="page"' : '') + '>' + x[1] + '</a>').join('') + '</div>' : '';
-    app.innerHTML = '<div class="subnav">' + sub + '</div>' + seg + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : aba==='anotacoes' ? telaAnotacoes() : aba==='relcamp' ? telaRelCampanha() : aba==='relterr' ? telaRelTerr() : aba==='campanha' ? telaCampanha() : telaCopias());
+    app.innerHTML = '<div class="subnav">' + sub + '</div>' + seg + (aba==='registro' ? telaRegistro() : aba==='cadastro' ? telaCadastro() : aba==='textos' ? telaTextos() : aba==='anotacoes' ? telaAnotacoes() : aba==='relcamp' ? telaRelCampanha() : aba==='relterr' ? telaRelTerr() : aba==='ajustes' ? telaAjustes() : aba==='campanha' ? telaCampanha() : telaCopias());
     return;
   }
   app.innerHTML = aba==='programacao' ? telaProgramacao() : aba==='controle' ? telaControle() : telaSemana();
@@ -1166,6 +1186,20 @@ const janelas = {
       (jaFeitoNoMes(v, t) ? '<div class="alerta-mes" style="margin-top:8px">' + textoAlerta(v, jaFeitoNoMes(v, t)) + '</div>' : '') +
       '<input type="hidden" id="f-pterr" value="' + t.id + '"></div>' +
       '<div class="campo"><label for="f-pnome">Seu nome</label><input id="f-pnome" autocomplete="name" value="' + esc(ultimoNome) + '"></div>' + botoes('Confirmar') + '</form>', true); },
+  'aj-v'(id){ if(!admin) return; const v = vaga(id), t = v && terr(v.terr); if(!t) return;
+    abrir('<form data-form="aj-v" data-id="' + id + '"><h3>Ajustar ' + esc(t.nome) + '</h3><p>' + esc(nomeVaga(v)) + '. Em andamento.</p>' +
+      '<div class="campo"><label for="f-ajp">Quem pegou</label><input id="f-ajp" value="' + esc(v.por || dirigenteDe(v)) + '" autocomplete="off"></div>' +
+      '<div class="campo"><label for="f-ajd">Data em que pegou</label><input id="f-ajd" type="date" value="' + esc(v.desde || hojeISO()) + '"></div>' +
+      '<p class="sub">Se ele pegou por engano e ainda não foi a campo, use <b>Liberar território</b>: ele volta a ficar livre e nada fica no registro.</p>' +
+      '<div class="acoes"><button type="button" class="btn perigo" data-acao="aj-liberar" data-id="' + id + '">Liberar território</button><button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Salvar ajuste</button></div></form>'); },
+  'aj-liberar'(id){ if(!admin) return; const v = vaga(id); if(!v) return; v.pego = false; v.por = ''; v.desde = hojeISO(); salvar(); fechar(); desenhar(); toast('Território liberado. Ele voltou a ficar livre.'); },
+  'aj-h'(id){ if(!admin) return; const x = S.historico.find(h => h.id===id), t = x && terr(x.terr); if(!t) return;
+    abrir('<form data-form="aj-h" data-id="' + id + '"><h3>Ajustar ' + esc(t.nome) + '</h3><p>Concluído. A correção vale para o Registro de Designação e os relatórios.</p>' +
+      '<div class="campo"><label for="f-ajp">Quem pegou</label><input id="f-ajp" value="' + esc(quemPegou(x)) + '" autocomplete="off"></div>' +
+      '<div class="campo"><label for="f-ajd">Data em que pegou</label><input id="f-ajd" type="date" value="' + esc(x.desig || x.data) + '"></div>' +
+      '<div class="campo"><label for="f-ajc">Quem concluiu</label><input id="f-ajc" value="' + esc(x.nome || '') + '" autocomplete="off"></div>' +
+      '<div class="campo"><label for="f-ajf">Data da conclusão</label><input id="f-ajf" type="date" value="' + esc(x.data) + '"></div>' +
+      '<div class="acoes"><button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Salvar ajuste</button></div></form>'); },
   semvideo(id){ const t = terr(id); toast('O vídeo de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
   semmapa(id){ const t = terr(id); toast('O mapa de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
   'rel-ver'(id){ const a = (S.arquivo||[]).find(x => x.id===id); if(!a) return;
@@ -1254,6 +1288,13 @@ const envios = {
     if(tid !== v.terr){ S.vagas.forEach(w => { if(w!==v && w.terr===tid && !w.pego) w.terr = null; }); v.terr = tid; }
     v.pego = true; v.por = nome; v.desde = hojeISO(); ultimoNome = nome; preencherVazias(); salvar(); fechar(); desenhar();
     toast(terr(tid).nome + ' em andamento: ' + nomeVaga(v) + '.'); },
+  'aj-v'(id){ if(!admin) return; const v = vaga(id); if(!v || !v.pego) return fechar();
+    const por = val('f-ajp'), d = val('f-ajd'); if(!por) return erro('Informe quem pegou.'); if(!d) return erro('Informe a data em que pegou.');
+    v.por = por; v.desde = d; salvar(); fechar(); desenhar(); toast('Ajuste salvo: pego em ' + br(d) + ' por ' + por + '.'); },
+  'aj-h'(id){ if(!admin) return; const x = S.historico.find(h => h.id===id); if(!x) return fechar();
+    const por = val('f-ajp'), d = val('f-ajd'), quem = val('f-ajc'), f = val('f-ajf');
+    if(!por) return erro('Informe quem pegou.'); if(!d || !f) return erro('Informe as duas datas.'); if(d > f) return erro('A data em que pegou não pode ser depois da conclusão.'); if(f > hojeISO()) return erro('A data de conclusão não pode ser futura.');
+    x.pegou = por; x.desig = d; x.nome = quem; x.data = f; x.ajustado = new Date().toISOString(); salvar(); fechar(); desenhar(); toast('Ajuste salvo.'); },
   adm(){ if(sha256(val('f-senha')) !== S.senha) return erro('Senha incorreta.'); admin = true; fechar(); desenhar(); },
   trocar(id){ const v = vaga(id); v.terr = val('f-terr') || null; v.pego = false; v.por = ''; v.desde = hojeISO(); salvar(); fechar(); desenhar(); },
   editar(id){ const nome = val('f-tnome'), link = val('f-link'), video = val('f-video'); if(!nome) return erro('Informe o nome.'); if((link && !linkOk(link)) || (video && !linkOk(video))) return erro('Os links precisam começar com https://');
@@ -1325,7 +1366,7 @@ document.addEventListener('click', e => {
 document.addEventListener('submit', e => { e.preventDefault(); const f = e.target.dataset.form; if(envios[f]) envios[f](e.target.dataset.id); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') fechar(); });
 window.addEventListener('hashchange', desenhar);
-document.addEventListener('change', e => { const k = e.target.dataset.acaoSel; if(k==='relc'){ campSel = e.target.value; desenhar(); } if(k==='rtp'){ rtPeriodo = e.target.value; desenhar(); } if(k==='rtt'){ rtTerr = e.target.value; desenhar(); } });
+document.addEventListener('change', e => { const k = e.target.dataset.acaoSel; if(k==='relc'){ campSel = e.target.value; desenhar(); } if(k==='rtp'){ rtPeriodo = e.target.value; desenhar(); } if(k==='rtt'){ rtTerr = e.target.value; desenhar(); } if(k==='ajt'){ ajTerr = e.target.value; desenhar(); } });
 
 carregar();
 // Confere a planilha de tempos em tempos e sempre que a pessoa volta para a página.
