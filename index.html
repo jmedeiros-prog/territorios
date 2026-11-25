@@ -361,7 +361,7 @@ function dadosIniciais(){
   ];
   const territorios = lista.map((x,i) => ({id:'k'+String(i+1).padStart(2,'0'), nome:x[0], tipo:x[1], link:DRIVE(x[2]), feitos:[], ciclo:1, ativo:true, notas:[]}));
   const vagas = [
-    {id:'seg', dia:0, turno:'tarde', grupo:'', local:'Casa Irmão Eduardo', dirigente:'Willian'},
+    {id:'seg', dia:0, turno:'tarde', grupo:'', local:'Casa Irmão Eduardo', dirigente:'Willian Guimarães'},
     {id:'ter', dia:1, turno:'manha', grupo:'', local:'Salão do Reino', dirigente:'Edson Ornaghi'},
     {id:'qua', dia:2, turno:'manha', grupo:'', local:'Salão do Reino', dirigente:'Edson Ornaghi'},
     {id:'qui', dia:3, turno:'tarde', grupo:'', local:'Casa Irmão Eduardo', dirigente:'Edson Reis'},
@@ -386,6 +386,12 @@ function migrar(){
   let mudou = false;
   if(!Array.isArray(S.arquivo)){ S.arquivo = []; mudou = true; }
   if(!Array.isArray(S.subs)){ S.subs = []; mudou = true; }
+  // "Willian" (segunda) e "Willian Guimarães" (domingo) são o mesmo irmão: fica um nome só, em tudo.
+  if(!S.nomeWillian){ const tr = n => n==='Willian' ? 'Willian Guimarães' : n;
+    S.vagas.forEach(v => { v.dirigente = tr(v.dirigente); v.por = tr(v.por); });
+    (S.escala||[]).forEach(x => x.nome = tr(x.nome)); S.subs.forEach(x => { x.nome = tr(x.nome); x.antigo = tr(x.antigo); });
+    S.historico.forEach(h => { h.para = tr(h.para); h.pegou = tr(h.pegou); h.nome = tr(h.nome); });
+    S.nomeWillian = true; mudou = true; }
   { const lim = new Date(); lim.setDate(lim.getDate() - 60); const antes = S.subs.length; S.subs = S.subs.filter(x => x.data >= iso(lim)); if(S.subs.length !== antes) mudou = true; }
   if(limparArquivo()) mudou = true;
   if(S.vagas.some(v => v.id==='afa' || v.id==='afb')){ S.vagas = S.vagas.filter(v => v.id!=='afa' && v.id!=='afb');
@@ -1217,7 +1223,7 @@ const janelas = {
   async subst(id){ const v = vaga(id); if(!v) return;
     if(!dirigentesPlanilha){ try{ const r = await (await fetch(API + '?acao=dirigentes')).json(); if(r && r.ok && r.nomes && r.nomes.length) dirigentesPlanilha = r.nomes; }catch(e){} }
     const datas = []; if(v.turno==='rural'){ datas.push(dataAfastado(5)); } else { const d0 = new Date(dataSaida(v) + 'T12:00:00'); for(let i=0; i<4; i++){ const d = new Date(d0); d.setDate(d.getDate() + 7*i); datas.push(iso(d)); } }
-    const nomes = dirigentesPlanilha || [...new Set(S.vagas.map(x => x.dirigente).concat((S.escala||[]).map(x => x.nome)).filter(Boolean).map(x => String(x).trim()))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+    const nomes = (dirigentesPlanilha || [...new Set(S.vagas.map(x => x.dirigente).concat((S.escala||[]).map(x => x.nome)).filter(Boolean).map(x => String(x).trim()))]).filter(n => !/todos os grupos|a definir/i.test(n)).sort((a,b) => a.localeCompare(b, 'pt-BR'));
     const atual = subDe(id, datas[0]);
     abrir('<form data-form="subst" data-id="' + id + '"><h3>Substituir dirigente</h3><p>' + esc(nomeVaga(v)) + '. Vale <b>só para o dia escolhido</b>; nas outras semanas continua o dirigente da escala. ' +
       'O novo dirigente recebe na hora, pelo WhatsApp, as informações da saída.</p>' +
