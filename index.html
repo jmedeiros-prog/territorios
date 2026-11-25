@@ -642,6 +642,7 @@ function mostrarMidias(){ for(const el of camada.querySelectorAll('.midia[data-m
   const img = el.querySelector('img'); if(img) img.onerror = () => { img.parentNode.textContent = 'Abrir foto'; }; } }
 // Ao concluir, as anotações saem do cartão e ficam guardadas 30 dias (Administração > Anotações) para baixar o relatório.
 const DIAS_ARQUIVO = 30;
+let dirigentesPlanilha = null;
 function arquivarNotas(t, hid, data, nome, motivo){ const sai = t.notas||[]; t.notas = [];
   if(!sai.length) return;
   (S.arquivo = S.arquivo || []).push({id:'a'+Date.now()+Math.random().toString(36).slice(2,6), hid, terr:t.id, nome:t.nome, concl:data, por:nome, guardado:hojeISO(), notas:sai, motivo:motivo || ''}); }
@@ -1204,7 +1205,7 @@ const janelas = {
       '<div class="campo"><label for="f-ajp">Quem pegou</label><input id="f-ajp" value="' + esc(v.por || dirigenteDe(v)) + '" autocomplete="off"></div>' +
       '<div class="campo"><label for="f-ajd">Data em que pegou</label><input id="f-ajd" type="date" value="' + esc(v.desde || hojeISO()) + '"></div>' +
       '<p class="sub">Se ele pegou por engano e ainda não foi a campo, use <b>Liberar território</b>: ele volta a ficar livre e nada fica no registro.</p>' +
-      '<div class="acoes"><button type="button" class="btn perigo" data-acao="aj-liberar" data-id="' + id + '">Liberar território</button><button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Salvar ajuste</button></div></form>'); },
+      '<p class="erro" id="erro"></p>' + '<div class="acoes"><button type="button" class="btn perigo" data-acao="aj-liberar" data-id="' + id + '">Liberar território</button><button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Salvar ajuste</button></div></form>'); },
   'aj-liberar'(id){ if(!admin) return; const v = vaga(id); if(!v) return; v.pego = false; v.por = ''; v.desde = hojeISO(); salvar(); fechar(); desenhar(); toast('Território liberado. Ele voltou a ficar livre.'); },
   'aj-h'(id){ if(!admin) return; const x = S.historico.find(h => h.id===id), t = x && terr(x.terr); if(!t) return;
     abrir('<form data-form="aj-h" data-id="' + id + '"><h3>Ajustar ' + esc(t.nome) + '</h3><p>Concluído. A correção vale para o Registro de Designação e os relatórios.</p>' +
@@ -1212,18 +1213,19 @@ const janelas = {
       '<div class="campo"><label for="f-ajd">Data em que pegou</label><input id="f-ajd" type="date" value="' + esc(x.desig || x.data) + '"></div>' +
       '<div class="campo"><label for="f-ajc">Quem concluiu</label><input id="f-ajc" value="' + esc(x.nome || '') + '" autocomplete="off"></div>' +
       '<div class="campo"><label for="f-ajf">Data da conclusão</label><input id="f-ajf" type="date" value="' + esc(x.data) + '"></div>' +
-      '<div class="acoes"><button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Salvar ajuste</button></div></form>'); },
-  subst(id){ const v = vaga(id); if(!v) return;
+      '<p class="erro" id="erro"></p>' + '<div class="acoes"><button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Salvar ajuste</button></div></form>'); },
+  async subst(id){ const v = vaga(id); if(!v) return;
+    if(!dirigentesPlanilha){ try{ const r = await (await fetch(API + '?acao=dirigentes')).json(); if(r && r.ok && r.nomes && r.nomes.length) dirigentesPlanilha = r.nomes; }catch(e){} }
     const datas = []; if(v.turno==='rural'){ datas.push(dataAfastado(5)); } else { const d0 = new Date(dataSaida(v) + 'T12:00:00'); for(let i=0; i<4; i++){ const d = new Date(d0); d.setDate(d.getDate() + 7*i); datas.push(iso(d)); } }
-    const nomes = [...new Set(S.vagas.map(x => x.dirigente).concat((S.escala||[]).map(x => x.nome), (S.subs||[]).map(x => x.nome)).filter(Boolean).map(x => String(x).trim()))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+    const nomes = dirigentesPlanilha || [...new Set(S.vagas.map(x => x.dirigente).concat((S.escala||[]).map(x => x.nome)).filter(Boolean).map(x => String(x).trim()))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
     const atual = subDe(id, datas[0]);
     abrir('<form data-form="subst" data-id="' + id + '"><h3>Substituir dirigente</h3><p>' + esc(nomeVaga(v)) + '. Vale <b>só para o dia escolhido</b>; nas outras semanas continua o dirigente da escala. ' +
       'O novo dirigente recebe na hora, pelo WhatsApp, as informações da saída.</p>' +
       '<div class="campo"><label for="f-sdata">Dia</label><select id="f-sdata" data-acao-sel="sdata" data-vaga="' + id + '">' + datas.map(d => { const x = subDe(id, d);
         return '<option value="' + d + '">' + DIAS[new Date(d + 'T12:00:00').getDay() === 0 ? 6 : new Date(d + 'T12:00:00').getDay() - 1] + ' ' + br(d) + (d===hojeISO() ? ' (hoje)' : '') + ' · ' + esc(x ? x.nome + ' no lugar de ' + x.antigo : dirigenteNoDia(v, d)) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="campo"><label for="f-snome">Quem vai dirigir</label><input id="f-snome" list="l-dirig" autocomplete="off" placeholder="Nome do irmão" value="' + esc(atual ? atual.nome : '') + '"><datalist id="l-dirig">' + nomes.map(n => '<option value="' + esc(n) + '">').join('') + '</datalist></div>' +
-      '<p class="sub">Use o nome como está na lista de dirigentes, para o WhatsApp chegar no número certo.</p>' +
-      '<div class="acoes">' + '<button type="button" class="btn perigo" data-acao="subst-cancelar" data-id="' + id + '"' + (atual ? '' : ' hidden') + ' id="b-scancel">Desfazer substituição</button>' +
+      '<div class="campo"><label for="f-snome">Quem vai dirigir</label><select id="f-snome"><option value="">Escolha o dirigente</option>' +
+        nomes.map(n => '<option' + (atual && atual.nome===n ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select></div>' +
+      '<p class="erro" id="erro"></p>' + '<div class="acoes">' + '<button type="button" class="btn perigo" data-acao="subst-cancelar" data-id="' + id + '"' + (atual ? '' : ' hidden') + ' id="b-scancel">Desfazer substituição</button>' +
       '<button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Confirmar e avisar</button></div></form>'); },
   'subst-cancelar'(id){ const d = val('f-sdata'), x = subDe(id, d); if(!x) return fechar();
     S.subs = S.subs.filter(y => y!==x); salvar(); fechar(); desenhar(); toast('Substituição desfeita. Volta a valer ' + x.antigo + '.'); },
@@ -1323,7 +1325,7 @@ const envios = {
     if(!por) return erro('Informe quem pegou.'); if(!d || !f) return erro('Informe as duas datas.'); if(d > f) return erro('A data em que pegou não pode ser depois da conclusão.'); if(f > hojeISO()) return erro('A data de conclusão não pode ser futura.');
     x.pegou = por; x.desig = d; x.nome = quem; x.data = f; x.ajustado = new Date().toISOString(); salvar(); fechar(); desenhar(); toast('Ajuste salvo.'); },
   async subst(id){ const v = vaga(id), d = val('f-sdata'), nome = val('f-snome'); if(!v || !d) return fechar();
-    if(!nome) return erro('Informe quem vai dirigir.');
+    if(!nome) return erro('Escolha quem vai dirigir.');
     const antes = subDe(id, d), antigo = antes ? antes.antigo : dirigenteNoDia(v, d);
     if(nome.trim().toLowerCase() === String(antigo).trim().toLowerCase()) return erro('Esse já é o dirigente desse dia.');
     S.subs = (S.subs||[]).filter(x => !(x.vaga===id && x.data===d));
@@ -1404,7 +1406,7 @@ document.addEventListener('click', e => {
 document.addEventListener('submit', e => { e.preventDefault(); const f = e.target.dataset.form; if(envios[f]) envios[f](e.target.dataset.id); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') fechar(); });
 window.addEventListener('hashchange', desenhar);
-document.addEventListener('change', e => { const k = e.target.dataset.acaoSel; if(k==='relc'){ campSel = e.target.value; desenhar(); } if(k==='rtp'){ rtPeriodo = e.target.value; desenhar(); } if(k==='rtt'){ rtTerr = e.target.value; desenhar(); } if(k==='ajt'){ ajTerr = e.target.value; desenhar(); } if(k==='sdata'){ const x = subDe(e.target.dataset.vaga, e.target.value); const b = document.getElementById('b-scancel'); if(b) b.hidden = !x; const n = document.getElementById('f-snome'); if(n) n.value = x ? x.nome : ''; } });
+document.addEventListener('change', e => { const k = e.target.dataset.acaoSel; if(k==='relc'){ campSel = e.target.value; desenhar(); } if(k==='rtp'){ rtPeriodo = e.target.value; desenhar(); } if(k==='rtt'){ rtTerr = e.target.value; desenhar(); } if(k==='ajt'){ ajTerr = e.target.value; desenhar(); } if(k==='sdata'){ const x = subDe(e.target.dataset.vaga, e.target.value); const b = document.getElementById('b-scancel'); if(b) b.hidden = !x; const n = document.getElementById('f-snome'); if(n) n.value = x && [...n.options].some(o => o.value===x.nome) ? x.nome : ''; } });
 
 carregar();
 // Confere a planilha de tempos em tempos e sempre que a pessoa volta para a página.
