@@ -108,7 +108,8 @@ function mostrarLema(){ const t = textoDaSemana(); if(t===lemaAtual) return; lem
 function emCampanha(){ return !!(S && S.campanha && S.campanha.ativa); }
 function cartao(v, data, rural){
   const t = terr(v.terr), hoje = data===hojeISO();
-  const dirigente = (v.dia===5 && dirigenteEm(data)) || v.dirigente;
+  const sub = (S.subs||[]).find(x => x.vaga===v.id && x.data===data);
+  const dirigente = sub ? sub.nome : (v.dia===5 && dirigenteEm(data)) || v.dirigente;
   let h = '<div class="card' + (hoje ? ' hoje' : '') + '">';
   if(rural) h += '<div class="grupo">Todos os grupos juntos</div>';
   else if(emCampanha() && v.dia===6) h += '<div class="grupo">Todos os grupos juntos</div>';

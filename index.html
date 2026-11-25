@@ -210,6 +210,9 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .sd span{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase}
 .sd small{font-size:11px;color:var(--muted)}
 .sd.zero b{color:var(--muted);font-weight:500}
+[hidden]{display:none!important}
+.lnk{background:none;border:0;padding:0 0 0 6px;font:inherit;font-size:13px;font-weight:700;color:var(--accent);text-decoration:underline;cursor:pointer}
+.subst-tag{display:inline-block;font-size:11.5px;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:1px 8px;margin-left:4px}
 .aj-tit{font-family:var(--display);font-size:16px;margin:22px 0 10px}
 .filtros{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 12px;max-width:620px}
 table.hist th,table.hist td{text-align:left;padding:8px 10px;vertical-align:top}
@@ -382,6 +385,8 @@ function dadosIniciais(){
 function migrar(){
   let mudou = false;
   if(!Array.isArray(S.arquivo)){ S.arquivo = []; mudou = true; }
+  if(!Array.isArray(S.subs)){ S.subs = []; mudou = true; }
+  { const lim = new Date(); lim.setDate(lim.getDate() - 60); const antes = S.subs.length; S.subs = S.subs.filter(x => x.data >= iso(lim)); if(S.subs.length !== antes) mudou = true; }
   if(limparArquivo()) mudou = true;
   if(S.vagas.some(v => v.id==='afa' || v.id==='afb')){ S.vagas = S.vagas.filter(v => v.id!=='afa' && v.id!=='afb');
     const a = S.vagas.find(v => v.id==='afs'); if(a) a.grupo = 'Todos os grupos'; mudou = true; }
@@ -481,7 +486,13 @@ function ehUltimoSabado(s){ const p = s.split('-').map(Number); return ultimoDoM
 function proxData(dia){ const d = new Date(); d.setDate(d.getDate() + (dia - diaHoje() + 7) % 7); return iso(d); }
 function proxSabado(){ const d = new Date(); d.setDate(d.getDate() + (6 - d.getDay())); return iso(d); }
 function dirigenteEm(data){ const e = (S.escala||[]).find(x => x.data===data); return e ? e.nome : ''; }
-function dirigenteDe(v){ if(v.dia!==5) return v.dirigente; return dirigenteEm(v.turno==='rural' ? dataAfastado(5) : proxSabado()) || v.dirigente; }
+function dirigenteEscala(v){ if(v.dia!==5) return v.dirigente; return dirigenteEm(v.turno==='rural' ? dataAfastado(5) : proxSabado()) || v.dirigente; }
+// Data da próxima saída desta vaga (hoje, se for hoje).
+function dataSaida(v){ return v.turno==='rural' ? dataAfastado(5) : v.dia===5 ? proxSabado() : proxData(v.dia); }
+// Substituição de dirigente: vale só para uma data. O dirigente da escala continua nas outras semanas.
+function subDe(vid, data){ return (S.subs||[]).find(x => x.vaga===vid && x.data===data); }
+function dirigenteDe(v){ const x = subDe(v.id, dataSaida(v)); return x ? x.nome : dirigenteEscala(v); }
+function dirigenteNoDia(v, d){ return (v.dia===5 && dirigenteEm(d)) || v.dirigente; }
 function hojeEhAfastado(dia){ return (dia===5 || dia===6) && dataAfastado(dia)===hojeISO(); }
 
 /* ============ REGRAS DO RODÍZIO ============ */
@@ -682,7 +693,9 @@ function cartao(v){
     (hoje ? '<span class="pill hj">Hoje</span>' : '') + '<span class="pill tp">' + (af ? esc(datasAfastado()) : ROTULO[v.turno]) + '</span></span></div>';
   if(espera) h += '<div class="nota">Hoje é dia de território rural. Este cartão fica em espera.</div>';
   h += '<dl class="saida">' + (af ? '<dt>Grupos</dt><dd>' + esc(v.grupo) + '</dd>' : '') + '<dt>Saída</dt><dd>' + esc(v.local) + '</dd><dt>' +
-    (v.dia===5 ? 'Dirigente ' + brCurto(af ? dataAfastado(5) : proxSabado()) : 'Dirigente') + '</dt><dd>' + esc(dirigenteDe(v)) + '</dd></dl>';
+    (v.dia===5 ? 'Dirigente ' + brCurto(af ? dataAfastado(5) : proxSabado()) : 'Dirigente') + '</dt><dd>' + esc(dirigenteDe(v)) +
+    (subDe(v.id, dataSaida(v)) ? ' <span class="subst-tag">substituindo ' + esc(subDe(v.id, dataSaida(v)).antigo) + '</span>' : '') +
+    ' <button type="button" class="lnk" data-acao="subst" data-id="' + v.id + '">' + (subDe(v.id, dataSaida(v)) ? 'Alterar' : 'Substituir') + '</button></dd></dl>';
   if(!t){
     h += '<div class="terr-bloco"><div class="terr vazio">Sem cartão livre para esta saída</div></div>';
     if(admin) h += '<div class="tools">' + ferramenta('trocar', 'Trocar', 'data-acao="trocar" data-id="' + v.id + '"') + '</div>';
@@ -1200,6 +1213,20 @@ const janelas = {
       '<div class="campo"><label for="f-ajc">Quem concluiu</label><input id="f-ajc" value="' + esc(x.nome || '') + '" autocomplete="off"></div>' +
       '<div class="campo"><label for="f-ajf">Data da conclusão</label><input id="f-ajf" type="date" value="' + esc(x.data) + '"></div>' +
       '<div class="acoes"><button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Salvar ajuste</button></div></form>'); },
+  subst(id){ const v = vaga(id); if(!v) return;
+    const datas = []; if(v.turno==='rural'){ datas.push(dataAfastado(5)); } else { const d0 = new Date(dataSaida(v) + 'T12:00:00'); for(let i=0; i<4; i++){ const d = new Date(d0); d.setDate(d.getDate() + 7*i); datas.push(iso(d)); } }
+    const nomes = [...new Set(S.vagas.map(x => x.dirigente).concat((S.escala||[]).map(x => x.nome), (S.subs||[]).map(x => x.nome)).filter(Boolean).map(x => String(x).trim()))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+    const atual = subDe(id, datas[0]);
+    abrir('<form data-form="subst" data-id="' + id + '"><h3>Substituir dirigente</h3><p>' + esc(nomeVaga(v)) + '. Vale <b>só para o dia escolhido</b>; nas outras semanas continua o dirigente da escala. ' +
+      'O novo dirigente recebe na hora, pelo WhatsApp, as informações da saída.</p>' +
+      '<div class="campo"><label for="f-sdata">Dia</label><select id="f-sdata" data-acao-sel="sdata" data-vaga="' + id + '">' + datas.map(d => { const x = subDe(id, d);
+        return '<option value="' + d + '">' + DIAS[new Date(d + 'T12:00:00').getDay() === 0 ? 6 : new Date(d + 'T12:00:00').getDay() - 1] + ' ' + br(d) + (d===hojeISO() ? ' (hoje)' : '') + ' · ' + esc(x ? x.nome + ' no lugar de ' + x.antigo : dirigenteNoDia(v, d)) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="campo"><label for="f-snome">Quem vai dirigir</label><input id="f-snome" list="l-dirig" autocomplete="off" placeholder="Nome do irmão" value="' + esc(atual ? atual.nome : '') + '"><datalist id="l-dirig">' + nomes.map(n => '<option value="' + esc(n) + '">').join('') + '</datalist></div>' +
+      '<p class="sub">Use o nome como está na lista de dirigentes, para o WhatsApp chegar no número certo.</p>' +
+      '<div class="acoes">' + '<button type="button" class="btn perigo" data-acao="subst-cancelar" data-id="' + id + '"' + (atual ? '' : ' hidden') + ' id="b-scancel">Desfazer substituição</button>' +
+      '<button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Confirmar e avisar</button></div></form>'); },
+  'subst-cancelar'(id){ const d = val('f-sdata'), x = subDe(id, d); if(!x) return fechar();
+    S.subs = S.subs.filter(y => y!==x); salvar(); fechar(); desenhar(); toast('Substituição desfeita. Volta a valer ' + x.antigo + '.'); },
   semvideo(id){ const t = terr(id); toast('O vídeo de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
   semmapa(id){ const t = terr(id); toast('O mapa de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
   'rel-ver'(id){ const a = (S.arquivo||[]).find(x => x.id===id); if(!a) return;
@@ -1295,6 +1322,17 @@ const envios = {
     const por = val('f-ajp'), d = val('f-ajd'), quem = val('f-ajc'), f = val('f-ajf');
     if(!por) return erro('Informe quem pegou.'); if(!d || !f) return erro('Informe as duas datas.'); if(d > f) return erro('A data em que pegou não pode ser depois da conclusão.'); if(f > hojeISO()) return erro('A data de conclusão não pode ser futura.');
     x.pegou = por; x.desig = d; x.nome = quem; x.data = f; x.ajustado = new Date().toISOString(); salvar(); fechar(); desenhar(); toast('Ajuste salvo.'); },
+  async subst(id){ const v = vaga(id), d = val('f-sdata'), nome = val('f-snome'); if(!v || !d) return fechar();
+    if(!nome) return erro('Informe quem vai dirigir.');
+    const antes = subDe(id, d), antigo = antes ? antes.antigo : dirigenteNoDia(v, d);
+    if(nome.trim().toLowerCase() === String(antigo).trim().toLowerCase()) return erro('Esse já é o dirigente desse dia.');
+    S.subs = (S.subs||[]).filter(x => !(x.vaga===id && x.data===d));
+    S.subs.push({id:'s'+Date.now(), vaga:id, data:d, nome:nome.trim(), antigo, em:new Date().toISOString()});
+    salvar(); fechar(); desenhar(); toast('Substituição registrada. Enviando o WhatsApp para ' + nome + '…');
+    try{
+      const r = await fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({acao:'substituir', vaga:id, data:d, nome:nome.trim(), antigo})}).then(x => x.json());
+      toast(r && r.ok ? 'WhatsApp enviado para ' + nome + '.' : 'Substituição salva, mas o WhatsApp não foi: ' + ((r && r.erro) || 'erro no envio') + '. Avise o irmão.');
+    }catch(e){ toast('Substituição salva, mas não consegui mandar o WhatsApp agora. Avise o irmão.'); } },
   adm(){ if(sha256(val('f-senha')) !== S.senha) return erro('Senha incorreta.'); admin = true; fechar(); desenhar(); },
   trocar(id){ const v = vaga(id); v.terr = val('f-terr') || null; v.pego = false; v.por = ''; v.desde = hojeISO(); salvar(); fechar(); desenhar(); },
   editar(id){ const nome = val('f-tnome'), link = val('f-link'), video = val('f-video'); if(!nome) return erro('Informe o nome.'); if((link && !linkOk(link)) || (video && !linkOk(video))) return erro('Os links precisam começar com https://');
@@ -1366,7 +1404,7 @@ document.addEventListener('click', e => {
 document.addEventListener('submit', e => { e.preventDefault(); const f = e.target.dataset.form; if(envios[f]) envios[f](e.target.dataset.id); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') fechar(); });
 window.addEventListener('hashchange', desenhar);
-document.addEventListener('change', e => { const k = e.target.dataset.acaoSel; if(k==='relc'){ campSel = e.target.value; desenhar(); } if(k==='rtp'){ rtPeriodo = e.target.value; desenhar(); } if(k==='rtt'){ rtTerr = e.target.value; desenhar(); } if(k==='ajt'){ ajTerr = e.target.value; desenhar(); } });
+document.addEventListener('change', e => { const k = e.target.dataset.acaoSel; if(k==='relc'){ campSel = e.target.value; desenhar(); } if(k==='rtp'){ rtPeriodo = e.target.value; desenhar(); } if(k==='rtt'){ rtTerr = e.target.value; desenhar(); } if(k==='ajt'){ ajTerr = e.target.value; desenhar(); } if(k==='sdata'){ const x = subDe(e.target.dataset.vaga, e.target.value); const b = document.getElementById('b-scancel'); if(b) b.hidden = !x; const n = document.getElementById('f-snome'); if(n) n.value = x ? x.nome : ''; } });
 
 carregar();
 // Confere a planilha de tempos em tempos e sempre que a pessoa volta para a página.
