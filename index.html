@@ -211,6 +211,16 @@ td small{display:block;font-weight:400;color:var(--muted);font-size:12px}
 .sd small{font-size:11px;color:var(--muted)}
 .sd.zero b{color:var(--muted);font-weight:500}
 [hidden]{display:none!important}
+.loc-box{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;color:var(--ink);background:var(--ok-soft);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent);border-radius:12px;padding:10px 12px;cursor:pointer}
+.loc-box div{flex:1;min-width:0;display:flex;flex-direction:column}
+.loc-box b{font-size:14.5px;color:var(--ok)} .loc-box small{font-size:12.5px;color:var(--muted)}
+.loc-box.eu{cursor:default}
+.loc-seta{font-size:24px;color:var(--ok);line-height:1}
+.loc-ponto{flex:none;width:12px;height:12px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 var(--ok);animation:pulso 1.8s infinite}
+@keyframes pulso{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}100%{box-shadow:0 0 0 10px transparent}}
+@media (prefers-reduced-motion: reduce){.loc-ponto{animation:none}}
+.loc-ligar{width:100%;font:inherit;font-size:13.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);border:1px dashed var(--accent);border-radius:12px;padding:9px 12px;cursor:pointer;text-align:center}
+.loc-mapa{width:100%;height:300px;border:0;border-radius:12px;display:block;background:var(--bg)}
 .lnk{background:none;border:0;padding:0 0 0 6px;font:inherit;font-size:13px;font-weight:700;color:var(--accent);text-decoration:underline;cursor:pointer}
 .subst-tag{display:inline-block;font-size:11.5px;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:1px 8px;margin-left:4px}
 .aj-tit{font-family:var(--display);font-size:16px;margin:22px 0 10px}
@@ -691,6 +701,56 @@ const ICO = {
 const ROTULO = {tarde:'Tarde', manha:'Manhã', afastado:'Afastado', rural:'Rural'};
 function ferramenta(ico, txt, attr, apagado){ return '<' + (attr.startsWith('href') ? 'a ' + attr + ' target="_blank" rel="noopener"' : 'button type="button" ' + attr) +
   ' class="tool' + (apagado ? ' apagado' : '') + '">' + ICO[ico] + '<span>' + txt + '</span></' + (attr.startsWith('href') ? 'a' : 'button') + '>'; }
+/* ============ LOCALIZAÇÃO EM TEMPO REAL ============
+   Só quem pegou compartilha, só no dia da saída e por no máximo 1 hora. A posição fica no cache do Google e some sozinha. */
+const LOC_MAX = 60*60*1000, LOC_KEY = 'loc-compartilhando';
+let LOCS = {}, locWatch = null, locWake = null, locUltimo = 0, locUltPos = null, locTimer = null;
+function vagaHoje(v){ const hj = hojeISO(); return v.turno==='rural' ? (dataAfastado(5)===hj || dataAfastado(6)===hj) : dataSaida(v)===hj; }
+function locMeu(){ try{ const x = JSON.parse(localStorage.getItem(LOC_KEY) || 'null'); return x && Date.now() - x.ini < LOC_MAX ? x : null; }catch(e){ return null; } }
+function haQuanto(t){ const m = Math.max(0, Math.round((Date.now() - t)/60000)); return m < 1 ? 'agora há pouco' : 'há ' + m + ' min'; }
+function perguntarLoc(id){ const v = vaga(id), t = v && terr(v.terr); if(!t) return;
+  abrir('<h3>Compartilhar sua localização?</h3><p>Durante <b>1 hora</b>, os irmãos que chegarem atrasados vão ver, no cartão do <b>' + esc(t.nome) + '</b>, onde o grupo está e como chegar.</p>' +
+    '<p class="sub">Deixe esta página aberta no celular enquanto compartilha. Se a tela bloquear, a posição para de atualizar. Você pode parar quando quiser, e ao concluir o território o compartilhamento termina sozinho.</p>' +
+    '<div class="acoes"><button type="button" class="btn leve" data-acao="fechar">Agora não</button><button type="button" class="btn cheio" data-acao="loc-sim" data-id="' + id + '">Sim, compartilhar</button></div>'); }
+function locEnviar(pos, x){ const v = vaga(x.vaga), t = v && terr(v.terr); locUltimo = Date.now(); locUltPos = pos.coords;
+  fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({acao:'loc', vaga:x.vaga, lat:pos.coords.latitude, lng:pos.coords.longitude, acc:pos.coords.accuracy, nome:x.nome, terr:t ? t.nome : '', ini:x.ini})})
+    .then(() => buscarLocs()).catch(() => {}); }
+function locDist(a, b){ const r = Math.PI/180, dx = (b.longitude - a.longitude)*r*Math.cos(a.latitude*r), dy = (b.latitude - a.latitude)*r; return 6371000*Math.hypot(dx, dy); }
+async function locAcordado(){ try{ if(navigator.wakeLock && !document.hidden) locWake = await navigator.wakeLock.request('screen'); }catch(e){} }
+function ligarLoc(x){
+  if(!navigator.geolocation) return toast('Este celular não permite compartilhar a localização pelo navegador.');
+  if(locWatch !== null) navigator.geolocation.clearWatch(locWatch);
+  locWatch = navigator.geolocation.watchPosition(pos => {
+    const x2 = locMeu(); if(!x2){ return pararLoc(); }
+    if(!locUltPos || Date.now() - locUltimo > 25000 || locDist(locUltPos, pos.coords) > 40) locEnviar(pos, x2);
+  }, err => { toast(err.code===1 ? 'Sem permissão de localização. Libere o acesso à localização para este site nas configurações do navegador.' : 'Não consegui pegar a localização agora. Tentando de novo…'); if(err.code===1) pararLoc(); },
+  {enableHighAccuracy:true, maximumAge:15000, timeout:30000});
+  locAcordado(); clearInterval(locTimer); locTimer = setInterval(() => { if(!S) return; const x2 = locMeu(), v = x2 && vaga(x2.vaga); if(!x2 || !v || !v.pego) pararLoc(); else pintarLocs(); }, 20000);
+  pintarLocs();
+}
+function iniciarLoc(id){ const v = vaga(id); if(!v) return;
+  const x = {vaga:id, ini:Date.now(), nome:v.por || ''}; try{ localStorage.setItem(LOC_KEY, JSON.stringify(x)); }catch(e){}
+  ligarLoc(x); toast('Compartilhando a localização por 1 hora.'); }
+function pararLoc(id){ const x = (() => { try{ return JSON.parse(localStorage.getItem(LOC_KEY) || 'null'); }catch(e){ return null; } })();
+  const alvo = id || (x && x.vaga); if(id && x && x.vaga !== id){ /* outro aparelho compartilhando: só apaga no servidor */ }
+  else { if(locWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(locWatch); locWatch = null; clearInterval(locTimer); try{ localStorage.removeItem(LOC_KEY); }catch(e){} try{ locWake && locWake.release(); }catch(e){} locWake = null; }
+  if(alvo){ delete LOCS[alvo]; fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({acao:'locparar', vaga:alvo})}).catch(() => {}); }
+  pintarLocs(); }
+async function buscarLocs(){ try{ const r = await (await fetch(API + '?acao=locs')).json(); if(r && r.ok){ LOCS = r.locs || {}; pintarLocs(); } }catch(e){} }
+function pintarLocs(){
+  if(!S) return; const meu = locMeu();
+  document.querySelectorAll('.loc-slot').forEach(el => { const v = vaga(el.dataset.vaga); if(!v){ el.innerHTML = ''; return; }
+    const L = LOCS[v.id], ativo = v.pego && vagaHoje(v), eu = meu && meu.vaga===v.id && locWatch !== null;
+    if(!ativo){ el.innerHTML = ''; return; }
+    if(eu){ const min = Math.max(1, Math.ceil((meu.ini + LOC_MAX - Date.now())/60000));
+      el.innerHTML = '<div class="loc-box eu"><span class="loc-ponto"></span><div><b>Você está compartilhando a localização</b><small>Restam ' + min + ' min · deixe esta página aberta</small></div><button type="button" class="btn mini leve" data-acao="loc-parar" data-id="' + v.id + '">Parar</button></div>'; return; }
+    if(L){ el.innerHTML = '<button type="button" class="loc-box" data-acao="loc-ver" data-id="' + v.id + '"><span class="loc-ponto"></span><div><b>Ver onde o grupo está</b><small>' + esc(L.nome || 'Quem pegou') + ' · atualizada ' + haQuanto(L.t) + '</small></div><span class="loc-seta">›</span></button>'; return; }
+    el.innerHTML = '<button type="button" class="loc-ligar" data-acao="loc-ligar" data-id="' + v.id + '">📍 Pegou este território? Compartilhe sua localização</button>'; });
+}
+setInterval(() => { if(!document.hidden) buscarLocs(); }, 30000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden){ buscarLocs(); if(locWatch !== null) locAcordado(); } });
+setTimeout(() => { buscarLocs(); const x = locMeu(); if(x) ligarLoc(x); else try{ localStorage.removeItem(LOC_KEY); }catch(e){} }, 1500);
+
 function cartao(v){
   const t = terr(v.terr), af = v.turno==='rural';
   const hoje = af ? (dataAfastado(5)===hojeISO() || dataAfastado(6)===hojeISO()) : (v.dia===diaHoje() && !hojeEhAfastado(v.dia));
@@ -715,6 +775,7 @@ function cartao(v){
     (t.tipo!==v.turno && !af ? '<span class="pill esp">Cartão ' + ROTULO[t.tipo].toLowerCase() + '</span>' : '') + '</div>';
   if(v.pego) h += '<div class="desde">Pego em ' + brCurto(v.desde) + (v.por ? ' por <b>' + esc(v.por) + '</b>' : '') + '</div>';
   if(rep) h += '<div class="alerta-mes">' + textoAlerta(v, rep) + '</div>';
+  h += '<div class="loc-slot" data-vaga="' + v.id + '"></div>';
   h += obsResumo(t);
   h += '<div class="principal">' + (v.pego ? '<button class="btn cheio" data-acao="concluir" data-id="' + v.id + '">Concluir território</button>'
     : '<button class="btn cheio' + (rep ? ' perigo-cheio' : '') + '" data-acao="pegar" data-id="' + v.id + '">Pegar território</button>') + '</div>';
@@ -1181,6 +1242,7 @@ function desenhar(){
     return;
   }
   app.innerHTML = aba==='programacao' ? telaProgramacao() : aba==='controle' ? telaControle() : telaSemana();
+  pintarLocs();
 }
 
 /* ============ JANELAS ============ */
@@ -1235,6 +1297,15 @@ const janelas = {
       '<button type="button" class="btn leve" data-acao="fechar">Cancelar</button><button type="submit" class="btn cheio">Confirmar e avisar</button></div></form>'); },
   'subst-cancelar'(id){ const d = val('f-sdata'), x = subDe(id, d); if(!x) return fechar();
     S.subs = S.subs.filter(y => y!==x); salvar(); fechar(); desenhar(); toast('Substituição desfeita. Volta a valer ' + x.antigo + '.'); },
+  'loc-sim'(id){ fechar(); iniciarLoc(id); },
+  'loc-ligar'(id){ perguntarLoc(id); },
+  'loc-parar'(id){ pararLoc(id); toast('Compartilhamento de localização encerrado.'); },
+  'loc-ver'(id){ const L = LOCS[id], v = vaga(id), t = v && terr(v.terr); if(!L) return toast('A localização não está mais disponível.');
+    const d = 0.0035, bb = [L.lng - d, L.lat - d*0.75, L.lng + d, L.lat + d*0.75].join(',');
+    abrir('<h3>Onde o grupo está' + (t ? ' · ' + esc(t.nome) : '') + '</h3><p>' + esc(L.nome || 'Quem pegou') + ' · atualizada ' + haQuanto(L.t) + (L.acc ? ' · precisão de uns ' + L.acc + ' m' : '') + '.</p>' +
+      '<iframe class="loc-mapa" title="Mapa com a localização do grupo" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=' + bb + '&layer=mapnik&marker=' + L.lat + ',' + L.lng + '"></iframe>' +
+      '<div class="acoes" style="margin-top:12px"><a class="btn cheio" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + L.lat + ',' + L.lng + '">Como chegar (Google Maps)</a>' +
+      '<a class="btn" target="_blank" rel="noopener" href="https://waze.com/ul?ll=' + L.lat + ',' + L.lng + '&navigate=yes">Waze</a><button type="button" class="btn leve" data-acao="fechar">Fechar</button></div>', true); },
   semvideo(id){ const t = terr(id); toast('O vídeo de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
   semmapa(id){ const t = terr(id); toast('O mapa de ' + (t ? t.nome : 'este território') + ' ainda não foi cadastrado.'); },
   'rel-ver'(id){ const a = (S.arquivo||[]).find(x => x.id===id); if(!a) return;
@@ -1315,14 +1386,15 @@ const erro = m => { document.getElementById('erro').textContent = m; };
 const envios = {
   concluir(id){ const nome = val('f-nome'), data = val('f-data');
     if(!nome) return erro('Informe seu nome.'); if(!data) return erro('Informe a data de conclusão.'); if(data > hojeISO()) return erro('A data não pode ser futura.');
-    ultimoNome = nome; const msg = concluir(id, nome, data); fechar(); desenhar(); toast(msg); },
+    ultimoNome = nome; const msg = concluir(id, nome, data); pararLoc(id); fechar(); desenhar(); toast(msg); },
   pegar(id){ const v = vaga(id), nome = val('f-pnome'); if(!v || !v.terr || v.pego){ fechar(); return desenhar(); }
     if(!nome) return erro('Informe seu nome.');
     const tid = val('f-pterr') || v.terr;
     if(tid !== v.terr && !alternativas(v).some(a => a.id===tid)) return erro('Esse território não está mais livre. Feche e abra de novo.');
     if(tid !== v.terr){ S.vagas.forEach(w => { if(w!==v && w.terr===tid && !w.pego) w.terr = null; }); v.terr = tid; }
     v.pego = true; v.por = nome; v.desde = hojeISO(); ultimoNome = nome; preencherVazias(); salvar(); fechar(); desenhar();
-    toast(terr(tid).nome + ' em andamento: ' + nomeVaga(v) + '.'); },
+    toast(terr(tid).nome + ' em andamento: ' + nomeVaga(v) + '.');
+    if(vagaHoje(v) && navigator.geolocation) perguntarLoc(v.id); },
   'aj-v'(id){ if(!admin) return; const v = vaga(id); if(!v || !v.pego) return fechar();
     const por = val('f-ajp'), d = val('f-ajd'); if(!por) return erro('Informe quem pegou.'); if(!d) return erro('Informe a data em que pegou.');
     v.por = por; v.desde = d; salvar(); fechar(); desenhar(); toast('Ajuste salvo: pego em ' + br(d) + ' por ' + por + '.'); },
@@ -1339,7 +1411,7 @@ const envios = {
     salvar(); fechar(); desenhar(); toast('Substituição registrada. Enviando o WhatsApp para ' + nome + '…');
     try{
       const r = await fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({acao:'substituir', vaga:id, data:d, nome:nome.trim(), antigo})}).then(x => x.json());
-      toast(r && r.ok ? 'WhatsApp enviado para ' + nome + '.' : 'Substituição salva, mas o WhatsApp não foi: ' + ((r && r.erro) || 'erro no envio') + '. Avise o irmão.');
+      toast(r && r.ok ? 'WhatsApp enviado para ' + nome + '.' : 'Substituição salva, mas o WhatsApp não foi: ' + ((r && r.erro) || 'o Apps Script publicado ainda é o antigo (publique a Nova versão)') + '. Avise o irmão.');
     }catch(e){ toast('Substituição salva, mas não consegui mandar o WhatsApp agora. Avise o irmão.'); } },
   adm(){ if(sha256(val('f-senha')) !== S.senha) return erro('Senha incorreta.'); admin = true; fechar(); desenhar(); },
   trocar(id){ const v = vaga(id); v.terr = val('f-terr') || null; v.pego = false; v.por = ''; v.desde = hojeISO(); salvar(); fechar(); desenhar(); },

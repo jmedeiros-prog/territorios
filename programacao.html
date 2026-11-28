@@ -55,6 +55,11 @@ h2 small{font-family:var(--body);font-size:13px;font-weight:600;color:var(--mute
 .pill.esp{background:var(--warn-soft);color:var(--warn)}
 .pill.ok{background:var(--ok-soft);color:var(--ok)}
 .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.loc-box{display:flex;align-items:center;gap:10px;margin-top:12px;background:#e3f4ec;border:1px solid #9fd6bb;border-radius:12px;padding:10px 12px}
+.loc-box div{display:flex;flex-direction:column} .loc-box b{color:#1b7a4f;font-size:14.5px} .loc-box small{color:#5b6676;font-size:12.5px}
+.loc-ponto{flex:none;width:12px;height:12px;border-radius:50%;background:#1b8a5a;animation:pulso 1.8s infinite}
+@keyframes pulso{0%{box-shadow:0 0 0 0 rgba(27,138,90,.55)}100%{box-shadow:0 0 0 10px rgba(27,138,90,0)}}
+@media (prefers-reduced-motion: reduce){.loc-ponto{animation:none}}
 .mapa{display:inline-block;margin-top:10px;font-weight:700;font-size:14px;color:var(--accent);text-decoration:none;border:1.5px solid var(--accent);border-radius:10px;padding:7px 12px}
 .escala{background:var(--surface);border:1.5px solid var(--line);border-radius:16px;overflow:hidden}
 .escala div{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:15px}
@@ -122,6 +127,7 @@ function cartao(v, data, rural){
       (v.pego ? '<span class="pill ok">Em andamento</span>' : '<span class="pill">Previsto</span>') + '</div>';
     if(linkOk(t.link)) h += '<a class="mapa" href="' + esc(t.link) + '" target="_blank" rel="noopener">Ver cartão do território</a> ';
     if(linkOk(t.video)) h += '<a class="mapa" href="' + esc(t.video) + '" target="_blank" rel="noopener">▶ Veja o território</a>';
+    if(hoje && v.pego) h += '<div class="loc-slot" data-vaga="' + v.id + '"></div>';
   }
   return h + '</div>';
 }
@@ -155,7 +161,7 @@ function desenhar(){
   h += '<h2>Dirigentes de sábado</h2>';
   h += esc_.length ? '<div class="escala">' + esc_.map(x => '<div><b>' + esc(x.nome) + '</b><span>' + br(x.data) + '</span></div>').join('') + '</div>'
                    : '<div class="vazio-txt">Escala ainda não cadastrada.</div>';
-  document.getElementById('app').innerHTML = h;
+  document.getElementById('app').innerHTML = h; if(typeof pintarLocs==='function') pintarLocs();
 }
 
 async function buscar(){
@@ -170,6 +176,17 @@ async function buscar(){
 }
 desenhar(); buscar();
 setInterval(() => { if(diaMostrado !== hojeISO()) desenhar(); if(!document.hidden) buscar(); }, 60000);
+
+// Localização do grupo (só leitura): aparece no cartão de hoje enquanto quem pegou estiver compartilhando (no máximo 1 hora).
+let LOCS = {};
+function haQuanto(t){ const m = Math.max(0, Math.round((Date.now() - t)/60000)); return m < 1 ? 'agora há pouco' : 'há ' + m + ' min'; }
+function pintarLocs(){ document.querySelectorAll('.loc-slot').forEach(el => { const L = LOCS[el.dataset.vaga];
+  el.innerHTML = L ? '<div class="loc-box"><span class="loc-ponto"></span><div><b>Onde o grupo está</b><small>' + esc(L.nome || 'Quem pegou') + ' · atualizada ' + haQuanto(L.t) + '</small></div></div>' +
+    '<div class="loc-bts"><a class="mapa" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + L.lat + ',' + L.lng + '">Como chegar (Google Maps)</a> <a class="mapa" target="_blank" rel="noopener" href="https://waze.com/ul?ll=' + L.lat + ',' + L.lng + '&navigate=yes">Waze</a></div>' : ''; }); }
+async function buscarLocs(){ try{ const r = await (await fetch(API + '?acao=locs')).json(); if(r && r.ok){ LOCS = r.locs || {}; pintarLocs(); } }catch(e){} }
+setInterval(() => { if(!document.hidden) buscarLocs(); }, 30000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) buscarLocs(); });
+setTimeout(buscarLocs, 1200);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) buscar(); });
 </script>
 </body>
